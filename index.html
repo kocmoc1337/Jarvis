@@ -1,214 +1,434 @@
-<!DOCTYPE html>
+import base64
+
+html_code = """<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>J.A.R.V.I.S.</title>
+<title>J.A.R.V.I.S. HUD Interface</title>
 <style>
-  :root{
-    --bg:#020409;
-    --blue:#4fd8ff;
-    --blue-dim:#0d3550;
-    --blue-soft:#8fe8ff;
-    --amber:#ffb238;
-    --red:#ff4d5e;
-    --fg:#d8f6ff;
+  :root {
+    --bg: #020409;
+    --blue: #4fd8ff;
+    --blue-dim: #0d3550;
+    --blue-soft: #8fe8ff;
+    --amber: #ffb238;
+    --red: #ff4d5e;
+    --fg: #d8f6ff;
   }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{
-    background:radial-gradient(ellipse at center, #061420 0%, #020409 70%);
-    color:var(--fg);
-    font-family:'Segoe UI', ui-sans-serif, system-ui, sans-serif;
-    height:100%; overflow:hidden;
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
-  .grid-bg{
-    position:fixed; inset:0; z-index:0;
+  
+  html, body {
+    background: radial-gradient(ellipse at center, #061420 0%, #020409 70%);
+    color: var(--fg);
+    font-family: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    user-select: none;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
     background-image:
       linear-gradient(rgba(79,216,255,0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(79,216,255,0.05) 1px, transparent 1px);
-    background-size:42px 42px;
-    -webkit-mask-image:radial-gradient(ellipse at center, black 0%, transparent 72%);
-    mask-image:radial-gradient(ellipse at center, black 0%, transparent 72%);
+    background-size: 42px 42px;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%);
   }
-  .vignette{
-    position:fixed; inset:0; z-index:6; pointer-events:none;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
+
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
   }
-  .scanline{
-    position:fixed; inset:0; z-index:5; pointer-events:none;
-    background:repeating-linear-gradient(to bottom,
+  
+  .scanline {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom,
       rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
       rgba(79,216,255,0.03) 3px, rgba(79,216,255,0.03) 4px);
   }
-  main{
-    position:relative; z-index:10;
-    height:100vh; width:100vw;
-    display:flex; align-items:center; justify-content:center;
+
+  main {
+    position: relative;
+    z-index: 10;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1000px;
   }
-  .core-wrap{
-    position:relative; width:min(60vw,420px); height:min(60vw,420px);
-    display:flex; align-items:center; justify-content:center; cursor:pointer;
+
+  /* ---- Central core (arc reactor style) ---- */
+  .core-wrap {
+    position: relative;
+    width: min(60vw,420px);
+    height: min(60vw,420px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    transform-style: preserve-3d;
   }
-  .ring{
-    position:absolute; border-radius:50%;
-    border:1px solid rgba(79,216,255,0.35);
+  
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(79,216,255,0.35);
   }
-  .ring.r1{ inset:0; animation:spin 18s linear infinite; border-style:dashed; }
-  .ring.r2{ inset:9%; animation:spin 26s linear infinite reverse; border-color:rgba(79,216,255,0.5); }
-  .ring.r3{ inset:18%; animation:spin 12s linear infinite; border-top-color:var(--blue); border-right-color:transparent; border-bottom-color:transparent; border-left-color:transparent; }
-  .ring.r4{ inset:27%; animation:spin 20s linear infinite reverse; border-color:rgba(143,232,255,0.25); }
-  @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
-  .tick-ring{ position:absolute; inset:2%; border-radius:50%; }
-  .core-center{
-    position:relative; width:34%; height:34%; border-radius:50%;
-    background:radial-gradient(circle, #dfffff 0%, var(--blue-soft) 25%, var(--blue) 55%, transparent 78%);
+  .ring.r1 { inset: 0; animation: spin 18s linear infinite; border-style: dashed; }
+  .ring.r2 { inset: 9%; animation: spin 26s linear infinite reverse; border-color: rgba(79,216,255,0.5); }
+  .ring.r3 { inset: 18%; animation: spin 12s linear infinite; border-top-color: var(--blue); border-right-color: transparent; border-bottom-color: transparent; border-left-color: transparent; }
+  .ring.r4 { inset: 27%; animation: spin 20s linear infinite reverse; border-color: rgba(143,232,255,0.25); }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .tick-ring {
+    position: absolute;
+    inset: 2%;
+    border-radius: 50%;
+  }
+
+  .core-center {
+    position: relative;
+    width: 34%;
+    height: 34%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #dfffff 0%, var(--blue-soft) 25%, var(--blue) 55%, transparent 78%);
     box-shadow:
       0 0 30px 6px rgba(79,216,255,0.6),
       0 0 80px 20px rgba(79,216,255,0.35),
       0 0 140px 50px rgba(79,216,255,0.15);
-    animation:pulseCore 2.6s ease-in-out infinite;
+    animation: pulseCore 2.6s ease-in-out infinite;
   }
-  @keyframes pulseCore{
-    0%,100%{ transform:scale(1); filter:brightness(1); }
-    50%{ transform:scale(1.06); filter:brightness(1.25); }
+  
+  @keyframes pulseCore {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.06); filter: brightness(1.25); }
   }
-  .core-center::after{
-    content:''; position:absolute; inset:-4px; border-radius:50%;
-    border:1px solid rgba(255,255,255,0.5);
+  
+  .core-center::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.5);
   }
-  .hud-panel{
-    position:fixed; z-index:12;
-    font-size:11px; letter-spacing:1.5px; color:var(--blue-soft);
-    text-transform:uppercase;
+
+  /* ---- HUD panels ---- */
+  .hud-panel {
+    position: fixed;
+    z-index: 12;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--blue-soft);
+    text-transform: uppercase;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   }
-  .hud-panel .label{ color:rgba(79,216,255,0.55); font-size:10px; margin-bottom:4px;}
-  .hud-panel .value{ font-size:15px; color:var(--fg); letter-spacing:1px; }
-  .top-left{ top:26px; left:28px; }
-  .top-right{ top:26px; right:28px; text-align:right; }
-  .bottom-left{ bottom:70px; left:28px; }
-  .bottom-right{ bottom:70px; right:28px; text-align:right; }
-  .corner-frame{
-    position:fixed; z-index:11; width:70px; height:70px;
-    border:1.5px solid var(--blue); opacity:0.7;
+  .hud-panel .label { color: rgba(79,216,255,0.55); font-size: 10px; margin-bottom: 4px; }
+  .hud-panel .value { font-size: 15px; color: var(--fg); letter-spacing: 1px; }
+
+  .top-left { top: 26px; left: 28px; }
+  .top-right { top: 26px; right: 28px; text-align: right; }
+  .bottom-left { bottom: 70px; left: 28px; }
+  .bottom-right { bottom: 70px; right: 28px; text-align: right; }
+
+  .corner-frame {
+    position: fixed;
+    z-index: 11;
+    width: 70px;
+    height: 70px;
+    border: 1.5px solid var(--blue);
+    opacity: 0.7;
+    pointer-events: none;
   }
-  .corner-frame.tl{ top:14px; left:14px; border-right:none; border-bottom:none; }
-  .corner-frame.tr{ top:14px; right:14px; border-left:none; border-bottom:none; }
-  .corner-frame.bl{ bottom:14px; left:14px; border-right:none; border-top:none; }
-  .corner-frame.br{ bottom:14px; right:14px; border-left:none; border-top:none; }
-  .title-block{
-    position:fixed; top:26px; left:50%; transform:translateX(-50%);
-    z-index:12; text-align:center;
+  .corner-frame.tl { top: 14px; left: 14px; border-right: none; border-bottom: none; }
+  .corner-frame.tr { top: 14px; right: 14px; border-left: none; border-bottom: none; }
+  .corner-frame.bl { bottom: 14px; left: 14px; border-right: none; border-top: none; }
+  .corner-frame.br { bottom: 14px; right: 14px; border-left: none; border-top: none; }
+
+  /* ---- title ---- */
+  .title-block {
+    position: fixed;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    text-align: center;
   }
-  .title-block .name{
-    font-size:22px; letter-spacing:8px; font-weight:300;
-    color:var(--fg); text-shadow:0 0 14px rgba(79,216,255,0.6);
+  .title-block .name {
+    font-size: 22px;
+    letter-spacing: 8px;
+    font-weight: 300;
+    color: var(--fg);
+    text-shadow: 0 0 14px rgba(79,216,255,0.6);
   }
-  .title-block .sub{ font-size:10px; letter-spacing:4px; color:rgba(79,216,255,0.55); margin-top:4px; }
-  .wave-wrap{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-    z-index:12; display:flex; align-items:flex-end; gap:3px; height:34px;
+  .title-block .sub {
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: rgba(79,216,255,0.55);
+    margin-top: 4px;
   }
-  .wave-wrap .bar{
-    width:3px; background:var(--blue); border-radius:2px;
-    box-shadow:0 0 6px rgba(79,216,255,0.7);
-    animation:wave 1.2s ease-in-out infinite;
+
+  /* ---- waveform ---- */
+  .wave-wrap {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 34px;
   }
-  @keyframes wave{ 0%,100%{ height:6px; opacity:0.5;} 50%{ height:28px; opacity:1;} }
-  .response{
-    position:fixed; top:calc(50% + 190px); left:50%; transform:translateX(-50%);
-    z-index:12; width:min(90vw,560px); text-align:center;
-    font-size:14px; color:var(--blue-soft); letter-spacing:0.5px; min-height:1.6em;
+  .wave-wrap .bar {
+    width: 3px;
+    height: 6px;
+    background: var(--blue);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(79,216,255,0.7);
+    transition: height 0.05s ease, background-color 0.3s ease;
   }
-  .response .cursor{
-    display:inline-block; width:7px; height:14px; background:var(--blue);
-    vertical-align:middle; animation:blink 1s steps(1) infinite;
+
+  /* ---- response line ---- */
+  .response {
+    position: fixed;
+    top: calc(50% + 190px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    width: min(90vw, 560px);
+    text-align: center;
+    font-size: 14px;
+    color: var(--blue-soft);
+    letter-spacing: 0.5px;
+    min-height: 1.6em;
   }
-  @keyframes blink{50%{opacity:0;}}
-  .credit{
-    position:fixed; bottom:14px; right:20px; z-index:20;
-    font-size:10px; letter-spacing:2px; color:rgba(79,216,255,0.35); text-transform:uppercase;
+  .response .cursor {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: var(--blue);
+    vertical-align: middle;
+    animation: blink 1s steps(1) infinite;
   }
-  .credit span{ color:var(--blue); text-shadow:0 0 8px rgba(79,216,255,0.6); }
-  .core-wrap.listening .core-center{
-    animation:pulseCoreFast 0.9s ease-in-out infinite;
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .credit {
+    position: fixed;
+    bottom: 14px;
+    right: 20px;
+    z-index: 20;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(79,216,255,0.35);
+    text-transform: uppercase;
+  }
+  .credit span { color: var(--blue); text-shadow: 0 0 8px rgba(79,216,255,0.6); }
+
+  .core-wrap.listening .core-center {
+    animation: pulseCoreFast 0.9s ease-in-out infinite;
     box-shadow:
       0 0 40px 10px rgba(255,77,94,0.55),
       0 0 100px 30px rgba(255,77,94,0.3),
       0 0 160px 60px rgba(255,77,94,0.12);
-    background:radial-gradient(circle, #fff 0%, #ffb7bd 20%, var(--red) 55%, transparent 78%);
   }
-  @keyframes pulseCoreFast{
-    0%,100%{ transform:scale(1); filter:brightness(1); }
-    50%{ transform:scale(1.12); filter:brightness(1.35); }
+  .core-wrap.listening .core-center {
+    background: radial-gradient(circle, #fff 0%, #ffb7bd 20%, var(--red) 55%, transparent 78%);
   }
-  .core-wrap.listening .ring.r3{ border-top-color:var(--red); }
-  .mic-hint{
-    position:fixed; top:calc(50% + 165px); left:50%; transform:translateX(-50%);
-    z-index:12; font-size:10px; letter-spacing:3px; color:rgba(79,216,255,0.4);
-    text-transform:uppercase; text-align:center; width:260px;
+  @keyframes pulseCoreFast {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.12); filter: brightness(1.35); }
   }
-  .status-pill{
-    position:fixed; top:66px; left:50%; transform:translateX(-50%);
-    z-index:12; font-size:9px; letter-spacing:3px;
-    padding:4px 12px; border:1px solid rgba(79,216,255,0.35);
-    border-radius:20px; color:rgba(79,216,255,0.6);
-    text-transform:uppercase; opacity:0; transition:opacity 0.3s;
+  .core-wrap.listening .ring.r3 { border-top-color: var(--red); }
+
+  .mic-hint {
+    position: fixed;
+    top: calc(50% + 165px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(79,216,255,0.4);
+    text-transform: uppercase;
+    text-align: center;
+    width: 260px;
+    pointer-events: none;
   }
-  .status-pill.show{ opacity:1; }
-  .status-pill.listening{ color:var(--red); border-color:rgba(255,77,94,0.5); }
-  .mute-btn{
-    position:fixed; bottom:16px; left:20px; z-index:20;
-    font-size:10px; letter-spacing:2px; color:rgba(79,216,255,0.5);
-    border:1px solid rgba(79,216,255,0.3); background:transparent;
-    padding:6px 12px; border-radius:4px; cursor:pointer;
-    text-transform:uppercase; font-family:inherit;
+
+  .status-pill {
+    position: fixed;
+    top: 66px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    font-size: 9px;
+    letter-spacing: 3px;
+    padding: 4px 12px;
+    border: 1px solid rgba(79,216,255,0.35);
+    border-radius: 20px;
+    color: rgba(79,216,255,0.6);
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.3s, color 0.3s, border-color 0.3s;
   }
-  .particle-field{ position:absolute; inset:-15%; z-index:1; pointer-events:none; }
-  .particle{
-    position:absolute; width:3px; height:3px; border-radius:50%;
-    background:var(--blue-soft);
-    box-shadow:0 0 6px rgba(79,216,255,0.8);
-    animation:orbit linear infinite;
+  .status-pill.show { opacity: 1; }
+  .status-pill.listening { color: var(--red); border-color: rgba(255,77,94,0.5); }
+
+  .mute-btn {
+    position: fixed;
+    bottom: 16px;
+    left: 20px;
+    z-index: 20;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(79,216,255,0.5);
+    border: 1px solid rgba(79,216,255,0.3);
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: inherit;
+    transition: all 0.2s;
   }
-  @keyframes orbit{
-    from{ transform:rotate(0deg) translateX(var(--r)) rotate(0deg); }
-    to{ transform:rotate(360deg) translateX(var(--r)) rotate(-360deg); }
+  .mute-btn:hover { color: var(--blue); border-color: var(--blue); background: rgba(79,216,255,0.05); }
+
+  /* ---- particles around core ---- */
+  .particle-field {
+    position: absolute;
+    inset: -15%;
+    z-index: 1;
+    pointer-events: none;
   }
-  .radar{
-    position:absolute; inset:-6%; z-index:2; border-radius:50%;
-    overflow:hidden; pointer-events:none;
+  .particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--blue-soft);
+    box-shadow: 0 0 6px rgba(79,216,255,0.8);
+    animation: orbit linear infinite;
   }
-  .radar::before{
-    content:''; position:absolute; inset:0;
-    background:conic-gradient(from 0deg, rgba(79,216,255,0.35), transparent 25%);
-    animation:radarSpin 4s linear infinite;
+  @keyframes orbit {
+    from { transform: rotate(0deg) translateX(var(--r)) rotate(0deg); }
+    to { transform: rotate(360deg) translateX(var(--r)) rotate(-360deg); }
   }
-  @keyframes radarSpin{ to{ transform:rotate(360deg); } }
-  .side-data{
-    position:fixed; top:50%; transform:translateY(-50%);
-    z-index:12; display:flex; flex-direction:column; gap:10px;
-    width:150px;
+
+  /* ---- radar sweep ---- */
+  .radar {
+    position: absolute;
+    inset: -6%;
+    z-index: 2;
+    border-radius: 50%;
+    overflow: hidden;
+    pointer-events: none;
   }
-  .side-data.left{ left:22px; }
-  .side-data.right{ right:22px; align-items:flex-end; text-align:right; }
-  @media (max-width:760px){ .side-data{ display:none; } }
-  .data-row{ font-size:9px; letter-spacing:1.5px; color:rgba(79,216,255,0.45); text-transform:uppercase; }
-  .data-bar{
-    width:100%; height:3px; background:rgba(79,216,255,0.12); margin-top:4px; border-radius:2px; overflow:hidden;
+  .radar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 0deg, rgba(79,216,255,0.35), transparent 25%);
+    animation: radarSpin 4s linear infinite;
   }
-  .data-bar > div{ height:100%; background:var(--blue); box-shadow:0 0 6px rgba(79,216,255,0.6); }
-  .core-wrap.thinking .ring.r2{ border-color:var(--amber); animation-duration:3s; }
-  .core-wrap.thinking .core-center{
-    background:radial-gradient(circle, #fffbe0 0%, #ffe6a3 20%, var(--amber) 55%, transparent 78%);
+  @keyframes radarSpin { to { transform: rotate(360deg); } }
+
+  /* ---- side data panels ---- */
+  .side-data {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 150px;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .side-data.left { left: 22px; }
+  .side-data.right { right: 22px; align-items: flex-end; text-align: right; }
+  @media (max-width: 760px) { .side-data { display: none; } }
+
+  .data-row { font-size: 9px; letter-spacing: 1.5px; color: rgba(79,216,255,0.45); text-transform: uppercase; width: 100%; }
+  .data-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(79,216,255,0.12);
+    margin-top: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .data-bar > div { height: 100%; background: var(--blue); box-shadow: 0 0 6px rgba(79,216,255,0.6); transition: width 0.4s ease; }
+
+  /* ---- search flash on core when fetching ---- */
+  .core-wrap.thinking .ring.r2 { border-color: var(--amber); animation-duration: 3s; }
+  .core-wrap.thinking .core-center {
+    background: radial-gradient(circle, #fffbe0 0%, #ffe6a3 20%, var(--amber) 55%, transparent 78%);
     box-shadow:
       0 0 40px 10px rgba(255,178,56,0.5),
       0 0 100px 30px rgba(255,178,56,0.28);
   }
-  ::selection{background:var(--blue); color:#02121c;}
+
+  /* ---- System Glitch effect ---- */
+  .glitch-active {
+    animation: screenGlitch 0.2s linear infinite;
+  }
+  @keyframes screenGlitch {
+    0% { transform: translate(1px, 1px) skewX(0deg); filter: hue-rotate(0deg) contrast(1); }
+    20% { transform: translate(-1px, -1px) skewX(1deg); filter: hue-rotate(90deg) contrast(1.2); }
+    40% { transform: translate(2px, -1px) skewX(-1deg); }
+    60% { transform: translate(-2px, 2px) skewX(0deg); filter: hue-rotate(180deg); }
+    80% { transform: translate(1px, -2px) skewX(0deg); }
+    100% { transform: translate(0px, 0px) skewX(0deg); filter: hue-rotate(0deg) contrast(1); }
+  }
+
+  /* ---- Ripple Shockwave element ---- */
+  .ripple-wave {
+    position: absolute;
+    border: 2px solid var(--blue);
+    border-radius: 50%;
+    background: transparent;
+    pointer-events: none;
+    z-index: 1;
+    animation: rippleEffect 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  }
+  @keyframes rippleEffect {
+    0% { width: 0; height: 0; opacity: 1; transform: translate(-50%, -50%); }
+    100% { width: 600px; height: 600px; opacity: 0; transform: translate(-50%, -50%); border-color: var(--red); }
+  }
+
+  ::selection { background: var(--blue); color: #02121c; }
 </style>
 </head>
 <body>
 
-<div class="grid-bg"></div>
+<div class="grid-bg" id="gridBg"></div>
 <div class="scanline"></div>
 <div class="vignette"></div>
 
@@ -224,24 +444,24 @@
 
 <div class="status-pill" id="statusPill">Ожидание</div>
 
-<div class="hud-panel top-left">
+<div class="hud-panel top-left" id="pnlTL">
   <div class="label">Диагностика</div>
   <div class="value" id="diag">98.6%</div>
 </div>
-<div class="hud-panel top-right">
+<div class="hud-panel top-right" id="pnlTR">
   <div class="label">Время</div>
   <div class="value" id="clock">00:00:00</div>
 </div>
-<div class="hud-panel bottom-left">
-  <div class="label">Мощность реактора</div>
-  <div class="value">STABLE</div>
+<div class="hud-panel bottom-left" id="pnlBL">
+  <div class="label">Заряд Батареи</div>
+  <div class="value" id="batteryVal">DETECTING...</div>
 </div>
-<div class="hud-panel bottom-right">
+<div class="hud-panel bottom-right" id="pnlBR">
   <div class="label">Статус</div>
   <div class="value">ОНЛАЙН</div>
 </div>
 
-<div class="side-data left">
+<div class="side-data left" id="pnlSL">
   <div class="data-row">Ядро <span id="loadPct">62%</span>
     <div class="data-bar"><div id="loadBar" style="width:62%"></div></div>
   </div>
@@ -252,13 +472,13 @@
     <div class="data-bar"><div id="memBar" style="width:41%"></div></div>
   </div>
 </div>
-<div class="side-data right">
+<div class="side-data right" id="pnlSR">
   <div class="data-row">Источник <span id="srcVal">WIKIPEDIA</span></div>
   <div class="data-row">Задержка <span id="latVal">12ms</span></div>
   <div class="data-row">Запросов <span id="reqVal">0</span></div>
 </div>
 
-<main>
+<main id="mainContainer">
   <div class="core-wrap" id="core">
     <div class="particle-field" id="particles"></div>
     <div class="radar"></div>
@@ -280,28 +500,37 @@
 <div class="credit">by <span>@newince</span> | verifactor</div>
 
 <script>
+// ---- Web Audio Setup & Analyser Nodes ----
 let audioCtx = null;
 let hum, humGain;
 let soundOn = true;
+let audioAnalyser = null;
+let dataArray = null;
+let sourceMic = null;
+let visualizerAnimationId = null;
 
 function initAudio(){
   if(audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Ambient reactor hum
   humGain = audioCtx.createGain();
-  humGain.gain.value = 0.035;
+  humGain.gain.value = soundOn ? 0.035 : 0;
   humGain.connect(audioCtx.destination);
+
   const o1 = audioCtx.createOscillator();
   o1.type = 'sine'; o1.frequency.value = 82;
   const o2 = audioCtx.createOscillator();
   o2.type = 'sine'; o2.frequency.value = 82.7;
   o1.connect(humGain); o2.connect(humGain);
   o1.start(); o2.start();
-  hum = [o1,o2];
+  hum = [o1, o2];
 }
 
 function beep(freq=880, dur=0.08, type='sine', vol=0.06){
   if(!soundOn) return;
   initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   const osc = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   osc.type = type; osc.frequency.value = freq;
@@ -327,6 +556,127 @@ document.getElementById('muteBtn').addEventListener('click', (e)=>{
   if(soundOn) beep(700,0.06);
 });
 
+// ---- Real Microphone Audio Visualizer ----
+async function initRealVisualizer() {
+  if (audioAnalyser) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    initAudio();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    
+    sourceMic = audioCtx.createMediaStreamSource(stream);
+    audioAnalyser = audioCtx.createAnalyser();
+    audioAnalyser.fftSize = 64; 
+    sourceMic.connect(audioAnalyser);
+    
+    const bufferLength = audioAnalyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+    animateVisualizer();
+  } catch (e) {
+    console.warn("Микрофон недоступен для эквалайзера, запущен симуляционный режим.", e);
+    animateFakeVisualizer();
+  }
+}
+
+function animateVisualizer() {
+  visualizerAnimationId = requestAnimationFrame(animateVisualizer);
+  if (!audioAnalyser) return;
+  
+  if (listening || speaking) {
+    audioAnalyser.getByteFrequencyData(dataArray);
+    waveBars.forEach((bar, index) => {
+      const value = dataArray[index % dataArray.length];
+      const percent = (value / 255) * 45; // Скейлинг высоты
+      bar.style.height = `${Math.max(6, percent)}px`;
+    });
+  } else {
+    // В режиме покоя возвращаем полосы к минимуму
+    waveBars.forEach(b => b.style.height = '6px');
+  }
+}
+
+function animateFakeVisualizer() {
+  visualizerAnimationId = requestAnimationFrame(animateFakeVisualizer);
+  if (listening || speaking) {
+    waveBars.forEach(bar => {
+      const percent = 6 + Math.random() * 26;
+      bar.style.height = `${percent}px`;
+    });
+  } else {
+    waveBars.forEach(b => b.style.height = '6px');
+  }
+}
+
+// ---- Interactivity: Mouse Parallax & Ripple Effect ----
+const panels = [
+  { el: document.getElementById('pnlTL'), mx: 15, my: 15 },
+  { el: document.getElementById('pnlTR'), mx: -15, my: 15 },
+  { el: document.getElementById('pnlBL'), mx: 15, my: -15 },
+  { el: document.getElementById('pnlBR'), mx: -15, my: -15 },
+  { el: document.getElementById('pnlSL'), mx: 20, my: 0 },
+  { el: document.getElementById('pnlSR'), mx: -20, my: 0 }
+];
+const coreWrap = document.getElementById('core');
+
+window.addEventListener('mousemove', (e) => {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const dx = (e.clientX - cx) / cx; // от -1 до 1
+  const dy = (e.clientY - cy) / cy; // от -1 до 1
+
+  // Поворот центрального ядра
+  coreWrap.style.transform = `rotateX(${dy * -12}deg) rotateY(${dx * 12}deg)`;
+
+  // Смещение информационных панелей HUD
+  panels.forEach(p => {
+    if (p.el) {
+      p.el.style.transform = `translate(${dx * p.mx}px, ${dy * p.my}px)`;
+    }
+  });
+});
+
+function spawnRipple(x, y) {
+  const ripple = document.createElement('div');
+  ripple.className = 'ripple-wave';
+  ripple.style.left = `${x}px`;
+  ripple.style.top = `${y}px`;
+  document.body.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 800);
+}
+
+// ---- System Glitch Trigger ----
+function triggerGlitch(duration = 600) {
+  beep(120, 0.2, 'sawtooth', 0.04);
+  document.body.classList.add('glitch-active');
+  setTimeout(() => {
+    document.body.classList.remove('glitch-active');
+  }, duration);
+}
+
+// ---- Battery API Integration ----
+function initBatteryUI() {
+  const batVal = document.getElementById('batteryVal');
+  if ('getBattery' in navigator) {
+    navigator.getBattery().then(battery => {
+      function updateBattery() {
+        const pct = Math.round(battery.level * 100);
+        batVal.textContent = `${pct}% ${battery.charging ? '⚡' : ''}`;
+        if (pct < 20 && !battery.charging) {
+          batVal.style.color = 'var(--red)';
+        } else {
+          batVal.style.color = 'var(--fg)';
+        }
+      }
+      updateBattery();
+      battery.addEventListener('levelchange', updateBattery);
+      battery.addEventListener('chargingchange', updateBattery);
+    });
+  } else {
+    batVal.textContent = 'STABLE';
+  }
+}
+
+// ---- Orbiting particles ----
 const pField = document.getElementById('particles');
 for(let i=0;i<18;i++){
   const p = document.createElement('div');
@@ -342,11 +692,14 @@ for(let i=0;i<18;i++){
   pField.appendChild(p);
 }
 
+// ---- Side data panel jitter ----
 function jitterBar(barId, pctId, base, range){
   setInterval(()=>{
     const v = Math.max(4, Math.min(100, base + (Math.random()*range - range/2)));
-    document.getElementById(barId).style.width = v.toFixed(0)+'%';
-    document.getElementById(pctId).textContent = v.toFixed(0)+'%';
+    const bar = document.getElementById(barId);
+    const pct = document.getElementById(pctId);
+    if(bar) bar.style.width = v.toFixed(0)+'%';
+    if(pct) pct.textContent = v.toFixed(0)+'%';
   }, 1600 + Math.random()*800);
 }
 jitterBar('loadBar','loadPct',62,20);
@@ -362,17 +715,20 @@ function bumpReq(){
   if(lat) lat.textContent = (80 + Math.floor(Math.random()*160)) + 'ms';
 }
 
+// ---- Clock ----
 function tick(){
   const d = new Date();
   document.getElementById('clock').textContent = d.toLocaleTimeString('ru-RU');
 }
 setInterval(tick,1000); tick();
 
+// ---- Diagnostics jitter ----
 setInterval(()=>{
   const v = (97 + Math.random()*2.9).toFixed(1);
   document.getElementById('diag').textContent = v + '%';
 }, 1400);
 
+// ---- Tick ring generation ----
 const svg = document.getElementById('ticksvg');
 const cx = 210, cy = 210, rOuter = 205, rInner = 192;
 for(let i=0;i<72;i++){
@@ -391,23 +747,23 @@ for(let i=0;i<72;i++){
   svg.appendChild(line);
 }
 
+// ---- Waveform bars ----
 const wave = document.getElementById('wave');
 const waveBars = [];
 for(let i=0;i<28;i++){
   const b = document.createElement('div');
   b.className = 'bar';
-  b.style.animationDelay = (Math.random()*1.2).toFixed(2)+'s';
-  b.style.animationDuration = (0.8 + Math.random()*0.8).toFixed(2)+'s';
   wave.appendChild(b);
   waveBars.push(b);
 }
-function setWaveActive(active){
-  waveBars.forEach(b=>{
-    b.style.animationPlayState = active ? 'running' : 'paused';
-    b.style.background = active ? 'var(--red)' : 'var(--blue)';
+
+function setWaveColors(mode) {
+  waveBars.forEach(b => {
+    b.style.backgroundColor = mode === 'listening' ? 'var(--red)' : (mode === 'thinking' ? 'var(--amber)' : 'var(--blue)');
   });
 }
 
+// ---- Dialogue Text Processing ----
 const idlePhrases = [
   "Доброе утро. Все системы функционируют штатно.",
   "Диагностика завершена. Аномалий не обнаружено.",
@@ -421,10 +777,10 @@ let pi = 0;
 let idleTimer = null;
 let speaking = false;
 
-function showStatus(text, listening){
+function showStatus(text, listeningMode){
   statusPill.textContent = text;
   statusPill.classList.add('show');
-  statusPill.classList.toggle('listening', !!listening);
+  statusPill.classList.toggle('listening', listeningMode === 'listening');
 }
 function hideStatusSoon(){
   setTimeout(()=> statusPill.classList.remove('show'), 1800);
@@ -432,15 +788,20 @@ function hideStatusSoon(){
 
 function typeText(text, onDone){
   let i = 0;
+  clearInterval(respEl._typeIv);
   function step(){
     respEl.innerHTML = text.slice(0,i) + '<span class="cursor"></span>';
     i++;
-    if(i <= text.length){ setTimeout(step, 26); }
+    if(i <= text.length){ 
+      respEl._typeIv = setTimeout(step, 26); 
+    }
     else if(onDone){ onDone(); }
   }
   step();
 }
+
 function eraseText(onDone){
+  clearInterval(respEl._typeIv);
   let text = respEl.textContent;
   let i = text.length;
   function step(){
@@ -454,7 +815,7 @@ function eraseText(onDone){
 }
 
 function idleLoop(){
-  if(speaking) return;
+  if(speaking || listening) return;
   const text = idlePhrases[pi % idlePhrases.length];
   typeText(text, ()=>{
     idleTimer = setTimeout(()=> eraseText(()=>{
@@ -463,13 +824,14 @@ function idleLoop(){
     }), 2600);
   });
 }
-idleLoop();
 
+// ---- Voice Synthesis (Speech) ----
 function speak(text){
   clearTimeout(idleTimer);
   speaking = true;
-  setWaveActive(true);
+  setWaveColors('speaking');
   typeText(text);
+
   if('speechSynthesis' in window && soundOn){
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'ru-RU';
@@ -482,17 +844,18 @@ function speak(text){
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
   } else {
-    setTimeout(finishSpeaking, Math.min(4000, text.length*60));
+    setTimeout(finishSpeaking, Math.min(4000, text.length * 60));
   }
 }
+
 function finishSpeaking(){
   speaking = false;
-  setWaveActive(false);
   showStatus('Ожидание');
   hideStatusSoon();
   idleTimer = setTimeout(()=> eraseText(()=>{ pi++; idleLoop(); }), 2200);
 }
 
+// ---- Wikipedia REST API Logic ----
 function extractQuery(said){
   let s = said.trim();
   s = s.replace(/^(джарвис[,]?\s*)/i, '');
@@ -538,7 +901,8 @@ async function craftReply(said){
   const query = extractQuery(said);
   if(!query) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
 
-  showStatus('Поиск...', false);
+  showStatus('Поиск...', 'thinking');
+  setWaveColors('thinking');
   document.getElementById('core').classList.add('thinking');
   document.getElementById('srcVal').textContent = 'WIKIPEDIA';
   bumpReq();
@@ -552,18 +916,22 @@ async function craftReply(said){
     return trimForSpeech(extract, 420);
   }catch(err){
     document.getElementById('core').classList.remove('thinking');
+    triggerGlitch(500); // Глитч при ошибке поиска
     return 'Не удалось найти информацию по запросу «' + query + '».';
   }
 }
 
+// ---- Web Speech API Recognition ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let listening = false;
+
 if(SR){
   recognition = new SR();
   recognition.lang = 'ru-RU';
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
+
   recognition.onresult = (e)=>{
     const said = e.results[0][0].transcript;
     showStatus('Обработка...');
@@ -572,11 +940,15 @@ if(SR){
       speak(reply);
     }, 250);
   };
-  recognition.onerror = ()=>{
+  recognition.onerror = (err)=>{
     stopListening();
+    console.error(err);
+    triggerGlitch(700);
     speak('Не удалось распознать голос. Попробуйте ещё раз.');
   };
-  recognition.onend = ()=>{ stopListening(); };
+  recognition.onend = ()=>{
+    stopListening();
+  };
 }
 
 function startListening(){
@@ -584,34 +956,58 @@ function startListening(){
     speak('Голосовой ввод не поддерживается этим браузером.');
     return;
   }
+  clearTimeout(idleTimer);
+  clearInterval(respEl._typeIv);
+  respEl.innerHTML = '<span class="cursor"></span>';
+  
   initAudio();
+  initRealVisualizer();
+  
   listening = true;
   core.classList.add('listening');
-  showStatus('Слушаю...', true);
+  showStatus('Слушаю...', 'listening');
+  setWaveColors('listening');
   chime();
   try{ recognition.start(); }catch(e){}
 }
+
 function stopListening(){
   listening = false;
   core.classList.remove('listening');
 }
 
-const core = document.getElementById('core');
-core.addEventListener('click', ()=>{
+core.addEventListener('click', (e)=>{
   initAudio();
-  if(audioCtx.state === 'suspended') audioCtx.resume();
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  
+  // Эффект взрывной волны при клике
+  spawnRipple(e.clientX, e.clientY);
+  
   if(listening){
-    recognition && recognition.stop();
+    if(recognition) recognition.stop();
     stopListening();
   } else {
     startListening();
   }
 });
 
+// Init on Load
 window.addEventListener('load', ()=>{
-  setTimeout(()=>{ initAudio(); chime(); speak('Здравствуйте. Все системы онлайн.'); }, 700);
+  initBatteryUI();
+  setTimeout(()=>{ 
+    initAudio(); 
+    chime(); 
+    speak('Здравствуйте. Все системы онлайн.'); 
+  }, 700);
 });
 </script>
 
 </body>
 </html>
+"""
+
+# Сохраняем объединенный и пропатченный код в файл index.html
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_code)
+
+print("Файл успешно сгенерирован!")
