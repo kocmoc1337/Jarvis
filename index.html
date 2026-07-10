@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S.</title>
+<style>
+  :root{
+    --bg:#020409;
+    --blue:#4fd8ff;
+    --blue-dim:#0d3550;
+    --blue-soft:#8fe8ff;
+    --amber:#ffb238;
+    --red:#ff4d5e;
+    --fg:#d8f6ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    background:radial-gradient(ellipse at center, #061420 0%, #020409 70%);
+    color:var(--fg);
+    font-family:'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    height:100%; overflow:hidden;
+  }
+  .grid-bg{
+    position:fixed; inset:0; z-index:0;
+    background-image:
+      linear-gradient(rgba(79,216,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,216,255,0.05) 1px, transparent 1px);
+    background-size:42px 42px;
+    -webkit-mask-image:radial-gradient(ellipse at center, black 0%, transparent 72%);
+    mask-image:radial-gradient(ellipse at center, black 0%, transparent 72%);
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:6; pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
+  }
+  .scanline{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background:repeating-linear-gradient(to bottom,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+      rgba(79,216,255,0.03) 3px, rgba(79,216,255,0.03) 4px);
+  }
+  main{
+    position:relative; z-index:10;
+    height:100vh; width:100vw;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .core-wrap{
+    position:relative; width:min(60vw,420px); height:min(60vw,420px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .ring{
+    position:absolute; border-radius:50%;
+    border:1px solid rgba(79,216,255,0.35);
+  }
+  .ring.r1{ inset:0; animation:spin 18s linear infinite; border-style:dashed; }
+  .ring.r2{ inset:9%; animation:spin 26s linear infinite reverse; border-color:rgba(79,216,255,0.5); }
+  .ring.r3{ inset:18%; animation:spin 12s linear infinite; border-top-color:var(--blue); border-right-color:transparent; border-bottom-color:transparent; border-left-color:transparent; }
+  .ring.r4{ inset:27%; animation:spin 20s linear infinite reverse; border-color:rgba(143,232,255,0.25); }
+  @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .tick-ring{ position:absolute; inset:2%; border-radius:50%; }
+  .core-center{
+    position:relative; width:34%; height:34%; border-radius:50%;
+    background:radial-gradient(circle, #dfffff 0%, var(--blue-soft) 25%, var(--blue) 55%, transparent 78%);
+    box-shadow:
+      0 0 30px 6px rgba(79,216,255,0.6),
+      0 0 80px 20px rgba(79,216,255,0.35),
+      0 0 140px 50px rgba(79,216,255,0.15);
+    animation:pulseCore 2.6s ease-in-out infinite;
+  }
+  @keyframes pulseCore{
+    0%,100%{ transform:scale(1); filter:brightness(1); }
+    50%{ transform:scale(1.06); filter:brightness(1.25); }
+  }
+  .core-center::after{
+    content:''; position:absolute; inset:-4px; border-radius:50%;
+    border:1px solid rgba(255,255,255,0.5);
+  }
+  .hud-panel{
+    position:fixed; z-index:12;
+    font-size:11px; letter-spacing:1.5px; color:var(--blue-soft);
+    text-transform:uppercase;
+  }
+  .hud-panel .label{ color:rgba(79,216,255,0.55); font-size:10px; margin-bottom:4px;}
+  .hud-panel .value{ font-size:15px; color:var(--fg); letter-spacing:1px; }
+  .top-left{ top:26px; left:28px; }
+  .top-right{ top:26px; right:28px; text-align:right; }
+  .bottom-left{ bottom:70px; left:28px; }
+  .bottom-right{ bottom:70px; right:28px; text-align:right; }
+  .corner-frame{
+    position:fixed; z-index:11; width:70px; height:70px;
+    border:1.5px solid var(--blue); opacity:0.7;
+  }
+  .corner-frame.tl{ top:14px; left:14px; border-right:none; border-bottom:none; }
+  .corner-frame.tr{ top:14px; right:14px; border-left:none; border-bottom:none; }
+  .corner-frame.bl{ bottom:14px; left:14px; border-right:none; border-top:none; }
+  .corner-frame.br{ bottom:14px; right:14px; border-left:none; border-top:none; }
+  .title-block{
+    position:fixed; top:26px; left:50%; transform:translateX(-50%);
+    z-index:12; text-align:center;
+  }
+  .title-block .name{
+    font-size:22px; letter-spacing:8px; font-weight:300;
+    color:var(--fg); text-shadow:0 0 14px rgba(79,216,255,0.6);
+  }
+  .title-block .sub{ font-size:10px; letter-spacing:4px; color:rgba(79,216,255,0.55); margin-top:4px; }
+  .wave-wrap{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    z-index:12; display:flex; align-items:flex-end; gap:3px; height:34px;
+  }
+  .wave-wrap .bar{
+    width:3px; background:var(--blue); border-radius:2px;
+    box-shadow:0 0 6px rgba(79,216,255,0.7);
+    animation:wave 1.2s ease-in-out infinite;
+  }
+  @keyframes wave{ 0%,100%{ height:6px; opacity:0.5;} 50%{ height:28px; opacity:1;} }
+  .response{
+    position:fixed; top:calc(50% + 190px); left:50%; transform:translateX(-50%);
+    z-index:12; width:min(90vw,560px); text-align:center;
+    font-size:14px; color:var(--blue-soft); letter-spacing:0.5px; min-height:1.6em;
+  }
+  .response .cursor{
+    display:inline-block; width:7px; height:14px; background:var(--blue);
+    vertical-align:middle; animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+  .credit{
+    position:fixed; bottom:14px; right:20px; z-index:20;
+    font-size:10px; letter-spacing:2px; color:rgba(79,216,255,0.35); text-transform:uppercase;
+  }
+  .credit span{ color:var(--blue); text-shadow:0 0 8px rgba(79,216,255,0.6); }
+  .core-wrap.listening .core-center{
+    animation:pulseCoreFast 0.9s ease-in-out infinite;
+    box-shadow:
+      0 0 40px 10px rgba(255,77,94,0.55),
+      0 0 100px 30px rgba(255,77,94,0.3),
+      0 0 160px 60px rgba(255,77,94,0.12);
+    background:radial-gradient(circle, #fff 0%, #ffb7bd 20%, var(--red) 55%, transparent 78%);
+  }
+  @keyframes pulseCoreFast{
+    0%,100%{ transform:scale(1); filter:brightness(1); }
+    50%{ transform:scale(1.12); filter:brightness(1.35); }
+  }
+  .core-wrap.listening .ring.r3{ border-top-color:var(--red); }
+  .mic-hint{
+    position:fixed; top:calc(50% + 165px); left:50%; transform:translateX(-50%);
+    z-index:12; font-size:10px; letter-spacing:3px; color:rgba(79,216,255,0.4);
+    text-transform:uppercase; text-align:center; width:260px;
+  }
+  .status-pill{
+    position:fixed; top:66px; left:50%; transform:translateX(-50%);
+    z-index:12; font-size:9px; letter-spacing:3px;
+    padding:4px 12px; border:1px solid rgba(79,216,255,0.35);
+    border-radius:20px; color:rgba(79,216,255,0.6);
+    text-transform:uppercase; opacity:0; transition:opacity 0.3s;
+  }
+  .status-pill.show{ opacity:1; }
+  .status-pill.listening{ color:var(--red); border-color:rgba(255,77,94,0.5); }
+  .mute-btn{
+    position:fixed; bottom:16px; left:20px; z-index:20;
+    font-size:10px; letter-spacing:2px; color:rgba(79,216,255,0.5);
+    border:1px solid rgba(79,216,255,0.3); background:transparent;
+    padding:6px 12px; border-radius:4px; cursor:pointer;
+    text-transform:uppercase; font-family:inherit;
+  }
+  ::selection{background:var(--blue); color:#02121c;}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="scanline"></div>
+<div class="vignette"></div>
+
+<div class="corner-frame tl"></div>
+<div class="corner-frame tr"></div>
+<div class="corner-frame bl"></div>
+<div class="corner-frame br"></div>
+
+<div class="title-block">
+  <div class="name">J.A.R.V.I.S.</div>
+  <div class="sub">just a rather very intelligent system</div>
+</div>
+
+<div class="status-pill" id="statusPill">Ожидание</div>
+
+<div class="hud-panel top-left">
+  <div class="label">Диагностика</div>
+  <div class="value" id="diag">98.6%</div>
+</div>
+<div class="hud-panel top-right">
+  <div class="label">Время</div>
+  <div class="value" id="clock">00:00:00</div>
+</div>
+<div class="hud-panel bottom-left">
+  <div class="label">Мощность реактора</div>
+  <div class="value">STABLE</div>
+</div>
+<div class="hud-panel bottom-right">
+  <div class="label">Статус</div>
+  <div class="value">ОНЛАЙН</div>
+</div>
+
+<main>
+  <div class="core-wrap" id="core">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="ring r4"></div>
+    <svg class="tick-ring" viewBox="0 0 420 420" id="ticksvg"></svg>
+    <div class="core-center"></div>
+  </div>
+</main>
+
+<div class="mic-hint">нажми на ядро и говори</div>
+<div class="response" id="response"><span class="cursor"></span></div>
+
+<div class="wave-wrap" id="wave"></div>
+
+<button class="mute-btn" id="muteBtn">Звук: вкл</button>
+<div class="credit">by <span>@newince</span> | verifactor</div>
+
+<script>
+let audioCtx = null;
+let hum, humGain;
+let soundOn = true;
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  humGain = audioCtx.createGain();
+  humGain.gain.value = 0.035;
+  humGain.connect(audioCtx.destination);
+  const o1 = audioCtx.createOscillator();
+  o1.type = 'sine'; o1.frequency.value = 82;
+  const o2 = audioCtx.createOscillator();
+  o2.type = 'sine'; o2.frequency.value = 82.7;
+  o1.connect(humGain); o2.connect(humGain);
+  o1.start(); o2.start();
+  hum = [o1,o2];
+}
+
+function beep(freq=880, dur=0.08, type='sine', vol=0.06){
+  if(!soundOn) return;
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.value = vol;
+  osc.connect(g); g.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  g.gain.setValueAtTime(vol, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.start(now);
+  osc.stop(now + dur + 0.02);
+}
+
+function chime(){
+  beep(660,0.1,'sine',0.05);
+  setTimeout(()=>beep(880,0.14,'sine',0.05), 90);
+  setTimeout(()=>beep(1180,0.18,'sine',0.04), 180);
+}
+
+document.getElementById('muteBtn').addEventListener('click', (e)=>{
+  soundOn = !soundOn;
+  e.target.textContent = 'Звук: ' + (soundOn ? 'вкл' : 'выкл');
+  if(humGain) humGain.gain.value = soundOn ? 0.035 : 0;
+  if(soundOn) beep(700,0.06);
+});
+
+function tick(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('ru-RU');
+}
+setInterval(tick,1000); tick();
+
+setInterval(()=>{
+  const v = (97 + Math.random()*2.9).toFixed(1);
+  document.getElementById('diag').textContent = v + '%';
+}, 1400);
+
+const svg = document.getElementById('ticksvg');
+const cx = 210, cy = 210, rOuter = 205, rInner = 192;
+for(let i=0;i<72;i++){
+  const angle = (i/72) * Math.PI * 2;
+  const long = i % 6 === 0;
+  const rI = long ? rInner - 10 : rInner;
+  const x1 = cx + rOuter*Math.cos(angle);
+  const y1 = cy + rOuter*Math.sin(angle);
+  const x2 = cx + rI*Math.cos(angle);
+  const y2 = cy + rI*Math.sin(angle);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+  line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+  line.setAttribute('stroke', long ? 'rgba(79,216,255,0.75)' : 'rgba(79,216,255,0.25)');
+  line.setAttribute('stroke-width', long ? 1.6 : 1);
+  svg.appendChild(line);
+}
+
+const wave = document.getElementById('wave');
+const waveBars = [];
+for(let i=0;i<28;i++){
+  const b = document.createElement('div');
+  b.className = 'bar';
+  b.style.animationDelay = (Math.random()*1.2).toFixed(2)+'s';
+  b.style.animationDuration = (0.8 + Math.random()*0.8).toFixed(2)+'s';
+  wave.appendChild(b);
+  waveBars.push(b);
+}
+function setWaveActive(active){
+  waveBars.forEach(b=>{
+    b.style.animationPlayState = active ? 'running' : 'paused';
+    b.style.background = active ? 'var(--red)' : 'var(--blue)';
+  });
+}
+
+const idlePhrases = [
+  "Доброе утро. Все системы функционируют штатно.",
+  "Диагностика завершена. Аномалий не обнаружено.",
+  "Ожидаю дальнейших указаний.",
+  "Уровень мощности стабилен на отметке 100%.",
+  "Сканирование окружения завершено."
+];
+const respEl = document.getElementById('response');
+const statusPill = document.getElementById('statusPill');
+let pi = 0;
+let idleTimer = null;
+let speaking = false;
+
+function showStatus(text, listening){
+  statusPill.textContent = text;
+  statusPill.classList.add('show');
+  statusPill.classList.toggle('listening', !!listening);
+}
+function hideStatusSoon(){
+  setTimeout(()=> statusPill.classList.remove('show'), 1800);
+}
+
+function typeText(text, onDone){
+  let i = 0;
+  function step(){
+    respEl.innerHTML = text.slice(0,i) + '<span class="cursor"></span>';
+    i++;
+    if(i <= text.length){ setTimeout(step, 26); }
+    else if(onDone){ onDone(); }
+  }
+  step();
+}
+function eraseText(onDone){
+  let text = respEl.textContent;
+  let i = text.length;
+  function step(){
+    if(i > 0){
+      i--;
+      respEl.innerHTML = text.slice(0,i) + '<span class="cursor"></span>';
+      setTimeout(step, 12);
+    } else if(onDone){ onDone(); }
+  }
+  step();
+}
+
+function idleLoop(){
+  if(speaking) return;
+  const text = idlePhrases[pi % idlePhrases.length];
+  typeText(text, ()=>{
+    idleTimer = setTimeout(()=> eraseText(()=>{
+      pi++;
+      idleTimer = setTimeout(idleLoop, 500);
+    }), 2600);
+  });
+}
+idleLoop();
+
+function speak(text){
+  clearTimeout(idleTimer);
+  speaking = true;
+  setWaveActive(true);
+  typeText(text);
+  if('speechSynthesis' in window && soundOn){
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ru-RU';
+    utter.pitch = 0.85;
+    utter.rate = 1.0;
+    const voices = speechSynthesis.getVoices();
+    const ruVoice = voices.find(v => v.lang && v.lang.startsWith('ru'));
+    if(ruVoice) utter.voice = ruVoice;
+    utter.onend = finishSpeaking;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  } else {
+    setTimeout(finishSpeaking, Math.min(4000, text.length*60));
+  }
+}
+function finishSpeaking(){
+  speaking = false;
+  setWaveActive(false);
+  showStatus('Ожидание');
+  hideStatusSoon();
+  idleTimer = setTimeout(()=> eraseText(()=>{ pi++; idleLoop(); }), 2200);
+}
+
+function craftReply(said){
+  const s = said.toLowerCase();
+  if(s.includes('привет') || s.includes('здравств')) return 'Здравствуйте. Чем могу помочь?';
+  if(s.includes('время') || s.includes('час')) return 'Сейчас ' + new Date().toLocaleTimeString('ru-RU') + '.';
+  if(s.includes('как дела') || s.includes('статус')) return 'Все системы функционируют в штатном режиме.';
+  if(s.includes('погод')) return 'У меня нет доступа к датчикам погоды в этой демонстрации.';
+  if(s.includes('спасибо')) return 'Всегда рад помочь.';
+  if(s.includes('кто ты') || s.includes('джарвис')) return 'Я Джарвис — интерфейс демонстрационной системы.';
+  return 'Принято. Обрабатываю запрос: «' + said + '».';
+}
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let listening = false;
+if(SR){
+  recognition = new SR();
+  recognition.lang = 'ru-RU';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (e)=>{
+    const said = e.results[0][0].transcript;
+    showStatus('Обработка...');
+    setTimeout(()=> speak(craftReply(said)), 350);
+  };
+  recognition.onerror = ()=>{
+    stopListening();
+    speak('Не удалось распознать голос. Попробуйте ещё раз.');
+  };
+  recognition.onend = ()=>{ stopListening(); };
+}
+
+function startListening(){
+  if(!recognition){
+    speak('Голосовой ввод не поддерживается этим браузером.');
+    return;
+  }
+  initAudio();
+  listening = true;
+  core.classList.add('listening');
+  showStatus('Слушаю...', true);
+  chime();
+  try{ recognition.start(); }catch(e){}
+}
+function stopListening(){
+  listening = false;
+  core.classList.remove('listening');
+}
+
+const core = document.getElementById('core');
+core.addEventListener('click', ()=>{
+  initAudio();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  if(listening){
+    recognition && recognition.stop();
+    stopListening();
+  } else {
+    startListening();
+  }
+});
+
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{ initAudio(); chime(); speak('Здравствуйте. Все системы онлайн.'); }, 700);
+});
+</script>
+
+</body>
+</html>
