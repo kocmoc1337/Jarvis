@@ -162,6 +162,47 @@
     padding:6px 12px; border-radius:4px; cursor:pointer;
     text-transform:uppercase; font-family:inherit;
   }
+  .particle-field{ position:absolute; inset:-15%; z-index:1; pointer-events:none; }
+  .particle{
+    position:absolute; width:3px; height:3px; border-radius:50%;
+    background:var(--blue-soft);
+    box-shadow:0 0 6px rgba(79,216,255,0.8);
+    animation:orbit linear infinite;
+  }
+  @keyframes orbit{
+    from{ transform:rotate(0deg) translateX(var(--r)) rotate(0deg); }
+    to{ transform:rotate(360deg) translateX(var(--r)) rotate(-360deg); }
+  }
+  .radar{
+    position:absolute; inset:-6%; z-index:2; border-radius:50%;
+    overflow:hidden; pointer-events:none;
+  }
+  .radar::before{
+    content:''; position:absolute; inset:0;
+    background:conic-gradient(from 0deg, rgba(79,216,255,0.35), transparent 25%);
+    animation:radarSpin 4s linear infinite;
+  }
+  @keyframes radarSpin{ to{ transform:rotate(360deg); } }
+  .side-data{
+    position:fixed; top:50%; transform:translateY(-50%);
+    z-index:12; display:flex; flex-direction:column; gap:10px;
+    width:150px;
+  }
+  .side-data.left{ left:22px; }
+  .side-data.right{ right:22px; align-items:flex-end; text-align:right; }
+  @media (max-width:760px){ .side-data{ display:none; } }
+  .data-row{ font-size:9px; letter-spacing:1.5px; color:rgba(79,216,255,0.45); text-transform:uppercase; }
+  .data-bar{
+    width:100%; height:3px; background:rgba(79,216,255,0.12); margin-top:4px; border-radius:2px; overflow:hidden;
+  }
+  .data-bar > div{ height:100%; background:var(--blue); box-shadow:0 0 6px rgba(79,216,255,0.6); }
+  .core-wrap.thinking .ring.r2{ border-color:var(--amber); animation-duration:3s; }
+  .core-wrap.thinking .core-center{
+    background:radial-gradient(circle, #fffbe0 0%, #ffe6a3 20%, var(--amber) 55%, transparent 78%);
+    box-shadow:
+      0 0 40px 10px rgba(255,178,56,0.5),
+      0 0 100px 30px rgba(255,178,56,0.28);
+  }
   ::selection{background:var(--blue); color:#02121c;}
 </style>
 </head>
@@ -200,8 +241,27 @@
   <div class="value">ОНЛАЙН</div>
 </div>
 
+<div class="side-data left">
+  <div class="data-row">Ядро <span id="loadPct">62%</span>
+    <div class="data-bar"><div id="loadBar" style="width:62%"></div></div>
+  </div>
+  <div class="data-row">Сеть <span id="netPct">88%</span>
+    <div class="data-bar"><div id="netBar" style="width:88%"></div></div>
+  </div>
+  <div class="data-row">Память <span id="memPct">41%</span>
+    <div class="data-bar"><div id="memBar" style="width:41%"></div></div>
+  </div>
+</div>
+<div class="side-data right">
+  <div class="data-row">Источник <span id="srcVal">WIKIPEDIA</span></div>
+  <div class="data-row">Задержка <span id="latVal">12ms</span></div>
+  <div class="data-row">Запросов <span id="reqVal">0</span></div>
+</div>
+
 <main>
   <div class="core-wrap" id="core">
+    <div class="particle-field" id="particles"></div>
+    <div class="radar"></div>
     <div class="ring r1"></div>
     <div class="ring r2"></div>
     <div class="ring r3"></div>
@@ -266,6 +326,41 @@ document.getElementById('muteBtn').addEventListener('click', (e)=>{
   if(humGain) humGain.gain.value = soundOn ? 0.035 : 0;
   if(soundOn) beep(700,0.06);
 });
+
+const pField = document.getElementById('particles');
+for(let i=0;i<18;i++){
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const r = 140 + Math.random()*90;
+  const dur = 6 + Math.random()*10;
+  const delay = -Math.random()*dur;
+  p.style.setProperty('--r', r+'px');
+  p.style.top = '50%'; p.style.left = '50%';
+  p.style.animationDuration = dur+'s';
+  p.style.animationDelay = delay+'s';
+  p.style.opacity = (0.3 + Math.random()*0.6).toFixed(2);
+  pField.appendChild(p);
+}
+
+function jitterBar(barId, pctId, base, range){
+  setInterval(()=>{
+    const v = Math.max(4, Math.min(100, base + (Math.random()*range - range/2)));
+    document.getElementById(barId).style.width = v.toFixed(0)+'%';
+    document.getElementById(pctId).textContent = v.toFixed(0)+'%';
+  }, 1600 + Math.random()*800);
+}
+jitterBar('loadBar','loadPct',62,20);
+jitterBar('netBar','netPct',88,10);
+jitterBar('memBar','memPct',41,16);
+
+let reqCount = 0;
+function bumpReq(){
+  reqCount++;
+  const el = document.getElementById('reqVal');
+  if(el) el.textContent = reqCount;
+  const lat = document.getElementById('latVal');
+  if(lat) lat.textContent = (80 + Math.floor(Math.random()*160)) + 'ms';
+}
 
 function tick(){
   const d = new Date();
@@ -398,15 +493,67 @@ function finishSpeaking(){
   idleTimer = setTimeout(()=> eraseText(()=>{ pi++; idleLoop(); }), 2200);
 }
 
-function craftReply(said){
+function extractQuery(said){
+  let s = said.trim();
+  s = s.replace(/^(джарвис[,]?\s*)/i, '');
+  s = s.replace(/^(найди( мне)?|что такое|кто такой|кто такая|расскажи( мне)? про|расскажи( мне)? о|поищи( информацию)?( про| о)?|погугли|информация о)\s+/i, '');
+  s = s.replace(/[?.!]+$/,'');
+  return s.trim();
+}
+
+async function searchWikipedia(query){
+  const endpoint = 'https://ru.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(query);
+  const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+  if(!res.ok) throw new Error('not found');
+  const data = await res.json();
+  if(data.type === 'disambiguation') throw new Error('ambiguous');
+  return data.extract;
+}
+
+async function searchWikipediaFallback(query){
+  const searchEndpoint = 'https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
+    encodeURIComponent(query) + '&format=json&origin=*';
+  const res = await fetch(searchEndpoint);
+  const data = await res.json();
+  const hit = data?.query?.search?.[0];
+  if(!hit) throw new Error('no results');
+  return searchWikipedia(hit.title);
+}
+
+function trimForSpeech(text, maxLen){
+  if(text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  const lastDot = cut.lastIndexOf('.');
+  return (lastDot > 40 ? cut.slice(0, lastDot+1) : cut) + '..';
+}
+
+async function craftReply(said){
   const s = said.toLowerCase();
   if(s.includes('привет') || s.includes('здравств')) return 'Здравствуйте. Чем могу помочь?';
-  if(s.includes('время') || s.includes('час')) return 'Сейчас ' + new Date().toLocaleTimeString('ru-RU') + '.';
-  if(s.includes('как дела') || s.includes('статус')) return 'Все системы функционируют в штатном режиме.';
-  if(s.includes('погод')) return 'У меня нет доступа к датчикам погоды в этой демонстрации.';
+  if(s.includes('время') || s.includes('который час')) return 'Сейчас ' + new Date().toLocaleTimeString('ru-RU') + '.';
+  if(s.includes('как дела') || (s.includes('статус') && s.length < 20)) return 'Все системы функционируют в штатном режиме.';
   if(s.includes('спасибо')) return 'Всегда рад помочь.';
-  if(s.includes('кто ты') || s.includes('джарвис')) return 'Я Джарвис — интерфейс демонстрационной системы.';
-  return 'Принято. Обрабатываю запрос: «' + said + '».';
+  if(s.includes('кто ты') || s.includes('джарвис ты кто')) return 'Я Джарвис — голосовой интерфейс с доступом к Википедии.';
+
+  const query = extractQuery(said);
+  if(!query) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
+
+  showStatus('Поиск...', false);
+  document.getElementById('core').classList.add('thinking');
+  document.getElementById('srcVal').textContent = 'WIKIPEDIA';
+  bumpReq();
+
+  try{
+    let extract;
+    try{ extract = await searchWikipedia(query); }
+    catch(e){ extract = await searchWikipediaFallback(query); }
+    document.getElementById('core').classList.remove('thinking');
+    if(!extract) return 'По этому запросу ничего не найдено.';
+    return trimForSpeech(extract, 420);
+  }catch(err){
+    document.getElementById('core').classList.remove('thinking');
+    return 'Не удалось найти информацию по запросу «' + query + '».';
+  }
 }
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -420,7 +567,10 @@ if(SR){
   recognition.onresult = (e)=>{
     const said = e.results[0][0].transcript;
     showStatus('Обработка...');
-    setTimeout(()=> speak(craftReply(said)), 350);
+    setTimeout(async ()=>{
+      const reply = await craftReply(said);
+      speak(reply);
+    }, 250);
   };
   recognition.onerror = ()=>{
     stopListening();
