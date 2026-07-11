@@ -91,7 +91,6 @@
     perspective: 1000px;
   }
 
-  /* ---- Central core (arc reactor style) ---- */
   .core-wrap {
     position: relative;
     width: min(60vw,420px);
@@ -162,7 +161,6 @@
     filter: blur(1px);
   }
 
-  /* ---- HUD panels ---- */
   .hud-panel {
     position: fixed;
     z-index: 12;
@@ -201,7 +199,6 @@
   .corner-frame.bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
   .corner-frame.br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
 
-  /* ---- title ---- */
   .title-block {
     position: fixed;
     top: 26px;
@@ -233,7 +230,6 @@
     margin-top: 4px;
   }
 
-  /* ---- waveform ---- */
   .wave-wrap {
     position: fixed;
     bottom: 24px;
@@ -254,7 +250,6 @@
     transition: height 0.05s ease, background-color 0.3s ease;
   }
 
-  /* ---- response line ---- */
   .response {
     position: fixed;
     top: calc(50% + 190px);
@@ -340,41 +335,6 @@
   .status-pill.show { opacity: 1; }
   .status-pill.listening { color: var(--red); border-color: rgba(255,77,94,0.5); }
 
-  .mute-btn {
-    position: fixed;
-    bottom: 16px;
-    left: 20px;
-    z-index: 20;
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: rgba(79,216,255,0.5);
-    border: 1px solid rgba(79,216,255,0.3);
-    background: transparent;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    text-transform: uppercase;
-    font-family: inherit;
-    transition: all 0.2s;
-  }
-  .mute-btn:hover { color: var(--blue); border-color: var(--blue); background: rgba(79,216,255,0.05); }
-
-  .ctrl-row{
-    position: fixed; bottom: 16px; left: 20px; z-index: 20;
-    display: flex; gap: 8px; flex-wrap: wrap; max-width: calc(100vw - 40px);
-  }
-  .ctrl-btn{
-    font-size: 10px; letter-spacing: 2px; color: rgba(79,216,255,0.5);
-    border: 1px solid rgba(79,216,255,0.3); background: rgba(3,10,16,0.5);
-    padding: 6px 12px; border-radius: 20px; cursor: pointer;
-    text-transform: uppercase; font-family: inherit; transition: all 0.2s;
-    backdrop-filter: blur(6px);
-  }
-  .ctrl-btn:hover{ color: var(--blue); border-color: var(--blue); background: rgba(79,216,255,0.08); box-shadow: 0 0 12px rgba(79,216,255,0.2); }
-  .ctrl-btn.active{ color: var(--bg); background: var(--blue); border-color: var(--blue); box-shadow: 0 0 14px rgba(79,216,255,0.5); }
-
-  .core-wrap.wake .ring.r4{ border-color: rgba(255,178,56,0.6); animation-duration: 8s; }
-
   .text-input-wrap{
     position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
     z-index: 20; display: flex; gap: 8px; align-items: center;
@@ -433,7 +393,6 @@
     to { transform: rotate(360deg) translateX(var(--r)) rotate(-360deg); }
   }
 
-  /* ---- radar sweep ---- */
   .radar {
     position: absolute;
     inset: -6%;
@@ -451,7 +410,6 @@
   }
   @keyframes radarSpin { to { transform: rotate(360deg); } }
 
-  /* ---- side data panels ---- */
   .side-data {
     position: fixed;
     top: 50%;
@@ -483,7 +441,6 @@
   }
   .data-bar > div { height: 100%; background: var(--blue); box-shadow: 0 0 6px rgba(79,216,255,0.6); transition: width 0.4s ease; }
 
-  /* ---- search flash on core when fetching ---- */
   .core-wrap.thinking .ring.r2 { border-color: var(--amber); animation-duration: 3s; }
   .core-wrap.thinking .core-center {
     background: radial-gradient(circle, #fffbe0 0%, #ffe6a3 20%, var(--amber) 55%, transparent 78%);
@@ -492,7 +449,6 @@
       0 0 100px 30px rgba(255,178,56,0.28);
   }
 
-  /* ---- System Glitch effect ---- */
   .glitch-active {
     animation: screenGlitch 0.2s linear infinite;
   }
@@ -505,7 +461,6 @@
     100% { transform: translate(0px, 0px) skewX(0deg); filter: hue-rotate(0deg) contrast(1); }
   }
 
-  /* ---- Ripple Shockwave element ---- */
   .ripple-wave {
     position: absolute;
     border: 2px solid var(--blue);
@@ -572,7 +527,7 @@
   </div>
 </div>
 <div class="side-data right" id="pnlSR">
-  <div class="data-row">Источник <span id="srcVal">WIKIPEDIA</span></div>
+  <div class="data-row">Источник <span id="srcVal">GEMINI</span></div>
   <div class="data-row">Задержка <span id="latVal">12ms</span></div>
   <div class="data-row">Запросов <span id="reqVal">0</span></div>
 </div>
@@ -614,6 +569,12 @@
 <div class="credit">by <span>@newince</span> | verifactor</div>
 
 <script>
+// =====================================================
+// 🔐 КЛЮЧ СПРЯТАН В CLOUDFLARE WORKER
+// Worker URL: https://jarvis-proxy.egar3864.workers.dev/
+// =====================================================
+const GEMINI_WORKER_URL = 'https://jarvis-proxy.egar3864.workers.dev/';
+
 // ---- Web Audio Setup & Analyser Nodes ----
 let audioCtx = null;
 let hum, humGain;
@@ -627,7 +588,6 @@ function initAudio(){
   if(audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  // Ambient reactor hum
   humGain = audioCtx.createGain();
   humGain.gain.value = soundOn ? 0.035 : 0;
   humGain.connect(audioCtx.destination);
@@ -670,7 +630,6 @@ document.getElementById('muteBtn').addEventListener('click', (e)=>{
   if(soundOn) beep(700,0.06);
 });
 
-// ---- Real Microphone Audio Visualizer ----
 async function initRealVisualizer() {
   if (audioAnalyser) return;
   try {
@@ -700,11 +659,10 @@ function animateVisualizer() {
     audioAnalyser.getByteFrequencyData(dataArray);
     waveBars.forEach((bar, index) => {
       const value = dataArray[index % dataArray.length];
-      const percent = (value / 255) * 45; // Скейлинг высоты
+      const percent = (value / 255) * 45;
       bar.style.height = `${Math.max(6, percent)}px`;
     });
   } else {
-    // В режиме покоя возвращаем полосы к минимуму
     waveBars.forEach(b => b.style.height = '6px');
   }
 }
@@ -721,7 +679,7 @@ function animateFakeVisualizer() {
   }
 }
 
-// ---- Interactivity: Mouse Parallax & Ripple Effect ----
+// ---- Interactivity ----
 const panels = [
   { el: document.getElementById('pnlTL'), mx: 15, my: 15 },
   { el: document.getElementById('pnlTR'), mx: -15, my: 15 },
@@ -735,13 +693,11 @@ const coreWrap = document.getElementById('core');
 window.addEventListener('mousemove', (e) => {
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
-  const dx = (e.clientX - cx) / cx; // от -1 до 1
-  const dy = (e.clientY - cy) / cy; // от -1 до 1
+  const dx = (e.clientX - cx) / cx;
+  const dy = (e.clientY - cy) / cy;
 
-  // Поворот центрального ядра
   coreWrap.style.transform = `rotateX(${dy * -12}deg) rotateY(${dx * 12}deg)`;
 
-  // Смещение информационных панелей HUD
   panels.forEach(p => {
     if (p.el) {
       p.el.style.transform = `translate(${dx * p.mx}px, ${dy * p.my}px)`;
@@ -749,7 +705,6 @@ window.addEventListener('mousemove', (e) => {
   });
 });
 
-// ---- Touch parallax (mobile equivalent of mousemove) ----
 window.addEventListener('touchmove', (e) => {
   if(!e.touches || !e.touches[0]) return;
   const t = e.touches[0];
@@ -763,7 +718,6 @@ window.addEventListener('touchmove', (e) => {
   });
 }, { passive: true });
 
-// ---- Device tilt for phones without touch-drag (gyroscope) ----
 let tiltEnabled = false;
 function onDeviceTilt(e){
   if(!tiltEnabled) return;
@@ -792,7 +746,6 @@ function spawnRipple(x, y) {
   setTimeout(() => ripple.remove(), 800);
 }
 
-// ---- System Glitch Trigger ----
 function triggerGlitch(duration = 600) {
   beep(120, 0.2, 'sawtooth', 0.04);
   document.body.classList.add('glitch-active');
@@ -801,7 +754,6 @@ function triggerGlitch(duration = 600) {
   }, duration);
 }
 
-// ---- Battery API Integration ----
 function initBatteryUI() {
   const batVal = document.getElementById('batteryVal');
   if ('getBattery' in navigator) {
@@ -895,7 +847,7 @@ function saveNote(text){
   try{ localStorage.setItem('jarvisNotes', JSON.stringify(notes)); }catch(e){}
 }
 
-// ---- Quick commands: time-in-city, weather, translate, remember ----
+// ---- Quick commands ----
 const CITY_TZ = {
   'москве':'Europe/Moscow', 'москва':'Europe/Moscow',
   'лондоне':'Europe/London', 'лондон':'Europe/London',
@@ -1078,7 +1030,7 @@ function idleLoop(){
   });
 }
 
-// ---- Voice Synthesis (Speech) ----
+// ---- Voice Synthesis ----
 let cachedVoices = [];
 let voicesReady = false;
 function loadVoices(){
@@ -1112,22 +1064,19 @@ function speak(text){
       utter.onerror = wrapUp;
 
       speechSynthesis.cancel();
-      // Safari/Chrome sometimes need a beat after cancel() before speak() actually starts
       setTimeout(()=>{
         speechSynthesis.speak(utter);
-        // Safari bug: synthesis auto-pauses after ~15s on long utterances. Nudge it awake periodically.
         clearInterval(resumeInterval);
         resumeInterval = setInterval(()=>{
           if(speechSynthesis.speaking && !speechSynthesis.paused){ /* fine */ }
           else if(speechSynthesis.paused){ speechSynthesis.resume(); }
         }, 4000);
-        // hard fallback in case onend/onerror never fire (happens occasionally on iOS)
         setTimeout(wrapUp, Math.max(3000, text.length * 90));
       }, 40);
     };
 
     if(voicesReady) doSpeak();
-    else setTimeout(doSpeak, 250); // give voices a moment to populate on first call
+    else setTimeout(doSpeak, 250);
   } else {
     setTimeout(finishSpeaking, Math.min(4000, text.length * 60));
   }
@@ -1141,7 +1090,44 @@ function finishSpeaking(){
   idleTimer = setTimeout(()=> eraseText(()=>{ pi++; idleLoop(); }), 2200);
 }
 
-// ---- Wikipedia REST API Logic ----
+// ---- GEMINI через Cloudflare Worker ----
+const SYSTEM_PROMPT = `Ты — Джарвис, голосовой помощник в интерфейсе Железного человека. Отвечай кратко, по-русски, по делу. Ты умеешь искать информацию, переводить, считать, запоминать заметки, ставить таймеры. Если вопрос неясен — попроси уточнить. Не используй эмодзи. Не говори от третьего лица. Ты — Джарвис.`;
+
+async function askGemini(prompt, historyContext) {
+  const messages = [];
+  
+  messages.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT }] });
+  messages.push({ role: 'model', parts: [{ text: 'Понял. Я Джарвис, готов помогать.' }] });
+  
+  const context = historyContext || [];
+  for (const entry of context) {
+    messages.push({ role: 'user', parts: [{ text: entry.q }] });
+    messages.push({ role: 'model', parts: [{ text: entry.a }] });
+  }
+  
+  messages.push({ role: 'user', parts: [{ text: prompt }] });
+  
+  const payload = { contents: messages };
+  
+  const response = await fetch(GEMINI_WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Worker error: ${response.status} - ${errorText}`);
+  }
+  
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini вернул пустой ответ');
+  
+  return text;
+}
+
+// ---- Wikipedia Fallback ----
 function extractQuery(said){
   let s = said.trim();
   s = s.replace(/^(джарвис[,]?\s*)/i, '');
@@ -1176,6 +1162,10 @@ function trimForSpeech(text, maxLen){
   return (lastDot > 40 ? cut.slice(0, lastDot+1) : cut) + '..';
 }
 
+let lastTopic = null;
+const PRONOUN_RE = /\b(он|она|оно|они|его|её|ему|ей|им|них|нём|ней|этот|эта|это|тот|та)\b/i;
+
+// ---- Main reply dispatcher ----
 async function craftReply(said){
   const s = said.toLowerCase();
   if(s.includes('привет') || s.includes('здравств')) return 'Здравствуйте. Чем могу помочь?';
@@ -1183,6 +1173,9 @@ async function craftReply(said){
   if(s.includes('как дела') || (s.includes('статус') && s.length < 20)) return 'Все системы функционируют в штатном режиме.';
   if(s.includes('спасибо')) return 'Всегда рад помочь.';
   if(s.includes('кто ты') || s.includes('джарвис ты кто')) return 'Я Джарвис — голосовой интерфейс с доступом к Википедии, погоде, переводчику, заметкам и таймерам.';
+  if(s.includes('что ты умеешь') || s.includes('что умеешь') || s.includes('список команд') || s.includes('помощь')){
+    return 'Я умею: искать статьи в Википедии, считать примеры вроде «2 плюс 2», говорить погоду и время в городах, переводить фразы, ставить таймер, запоминать заметки, а также отвечать на уточняющие вопросы по предыдущей теме.';
+  }
 
   const mathReply = tryMathCommand(said);
   if(mathReply !== null) return mathReply;
@@ -1194,43 +1187,105 @@ async function craftReply(said){
   if(quick !== null) return quick;
 
   let query = extractQuery(said);
-  if(!query) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
+  if(!query || query.length < 2) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
 
-  // context memory: resolve pronouns against the last topic discussed
+  if(!/[a-zа-яё]/i.test(query)){
+    return 'Не понял, что вы имеете в виду. Можете переформулировать?';
+  }
+
   if(PRONOUN_RE.test(query) && lastTopic){
     query = lastTopic;
   }
 
-  showStatus('Поиск...', 'thinking');
+  showStatus('Думаю...', 'thinking');
   setWaveColors('thinking');
   document.getElementById('core').classList.add('thinking');
-  document.getElementById('srcVal').textContent = 'WIKIPEDIA';
-  bumpReq();
+  bumpReq('GEMINI');
 
-  try{
-    let extract;
-    try{ extract = await searchWikipedia(query); }
-    catch(e){ extract = await searchWikipediaFallback(query); }
+  // ПЕРВЫЙ ПРИОРИТЕТ: Gemini через Worker
+  try {
+    const contextHistory = history.slice(0, 6).slice().reverse();
+    const reply = await askGemini(said, contextHistory);
     document.getElementById('core').classList.remove('thinking');
-    if(!extract) return 'По этому запросу ничего не найдено.';
-    lastTopic = query; // remember for follow-up questions
-    return trimForSpeech(extract, 420);
-  }catch(err){
-    document.getElementById('core').classList.remove('thinking');
-    triggerGlitch(500); // Глитч при ошибке поиска
-    return 'Не удалось найти информацию по запросу «' + query + '».';
+    lastTopic = query;
+    const trimmed = trimForSpeech(reply, 420);
+    return trimmed;
+  } catch (err) {
+    console.warn('Gemini через Worker не сработал, пробуем Wikipedia:', err);
+    
+    // ВТОРОЙ ПРИОРИТЕТ: Wikipedia (резерв)
+    document.getElementById('srcVal').textContent = 'WIKIPEDIA (fallback)';
+    try {
+      let extract;
+      try { extract = await searchWikipedia(query); }
+      catch(e) { extract = await searchWikipediaFallback(query); }
+      document.getElementById('core').classList.remove('thinking');
+      if(!extract) return 'По этому запросу ничего не найдено.';
+
+      if(!isRelevantMatch(query, extract)){
+        return `Нашёл статью, но не уверен, что она отвечает на вопрос про «${query}». Попробуйте уточнить запрос.`;
+      }
+
+      lastTopic = query;
+      return trimForSpeech(extract, 420);
+    } catch(err) {
+      document.getElementById('core').classList.remove('thinking');
+      triggerGlitch(500);
+      return 'Не удалось найти информацию по запросу «' + query + '».';
+    }
   }
 }
 
-// ---- Simple arithmetic ("2+2", "сколько будет 5 умножить на 3") ----
-const OP_WORDS = {
-  'плюс':'+', 'прибавить':'+',
-  'минус':'-', 'отнять':'-',
-  'умножить на':'*', 'умножить':'*', 'на':'*', 'помножить на':'*',
-  'разделить на':'/', 'раздели на':'/', 'разделить':'/'
-};
+function queryWords(q){
+  return q.toLowerCase()
+    .replace(/[^a-zа-яё0-9\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 4);
+}
+function isRelevantMatch(query, extract){
+  const qw = queryWords(query);
+  if(qw.length === 0) return true;
+  const ex = extract.toLowerCase();
+  return qw.some(w => ex.includes(w.slice(0, Math.min(5, w.length))));
+}
+
+// ---- Math commands ----
+const NUM_UNITS = { 'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9 };
+const NUM_TEENS = { 'десять':10,'одиннадцать':11,'двенадцать':12,'тринадцать':13,'четырнадцать':14,'пятнадцать':15,'шестнадцать':16,'семнадцать':17,'восемнадцать':18,'девятнадцать':19 };
+const NUM_TENS = { 'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90 };
+const NUM_HUNDREDS = { 'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900 };
+const NUM_SCALE = { 'тысяча':1000,'тысячи':1000,'тысяч':1000 };
+
+function wordsToNumbers(text){
+  const tokens = text.split(/(\s+)/);
+  const out = [];
+  let i = 0;
+  while(i < tokens.length){
+    const word = tokens[i].toLowerCase();
+    if(NUM_UNITS[word] !== undefined || NUM_TEENS[word] !== undefined || NUM_TENS[word] !== undefined || NUM_HUNDREDS[word] !== undefined){
+      let total = 0;
+      let j = i;
+      while(j < tokens.length){
+        const w = tokens[j].toLowerCase();
+        if(NUM_HUNDREDS[w] !== undefined){ total += NUM_HUNDREDS[w]; j += 2; continue; }
+        if(NUM_TENS[w] !== undefined){ total += NUM_TENS[w]; j += 2; continue; }
+        if(NUM_TEENS[w] !== undefined){ total += NUM_TEENS[w]; j += 2; continue; }
+        if(NUM_UNITS[w] !== undefined){ total += NUM_UNITS[w]; j += 2; continue; }
+        if(NUM_SCALE[w] !== undefined){ total = (total || 1) * NUM_SCALE[w]; j += 2; continue; }
+        break;
+      }
+      out.push(total.toString());
+      i = j;
+    } else {
+      out.push(tokens[i]);
+      i++;
+    }
+  }
+  return out.join('');
+}
+
 function normalizeMathWords(s){
-  return s
+  return wordsToNumbers(s)
     .replace(/умножить на/gi, '*')
     .replace(/помножить на/gi, '*')
     .replace(/раздели(ть)? на/gi, '/')
@@ -1242,20 +1297,32 @@ function normalizeMathWords(s){
     .replace(/[×хx]/gi, '*')
     .replace(/,/g, '.');
 }
+
+function formatMathResult(result){
+  const rounded = Math.round(result * 10000) / 10000;
+  return Number.isInteger(rounded) ? rounded.toString() : rounded.toString().replace('.', ',');
+}
+
 function tryMathCommand(said){
   const raw = said.toLowerCase();
 
-  // imperative form: "раздели 10 на 4", "умножь 5 на 3"
-  const impMatch = raw.match(/(раздел[иь]|умнож[иь])(?:те)?\s+(-?\d+(?:[.,]\d+)?)\s+на\s+(-?\d+(?:[.,]\d+)?)/i);
+  const pctSource = wordsToNumbers(raw);
+  const pctMatch = pctSource.match(/(-?\d+(?:[.,]\d+)?)\s*%?\s*процент(?:ов|а)?\s*от\s*(-?\d+(?:[.,]\d+)?)/i);
+  if(pctMatch){
+    const p = parseFloat(pctMatch[1].replace(',', '.'));
+    const of = parseFloat(pctMatch[2].replace(',', '.'));
+    return `Будет ${formatMathResult((p/100)*of)}.`;
+  }
+
+  const impSource = wordsToNumbers(raw);
+  const impMatch = impSource.match(/(раздел[иь]|умнож[иь])(?:те)?\s+(-?\d+(?:[.,]\d+)?)\s+на\s+(-?\d+(?:[.,]\d+)?)/i);
   if(impMatch){
     const a = parseFloat(impMatch[2].replace(',', '.'));
     const b = parseFloat(impMatch[3].replace(',', '.'));
     const isDivide = impMatch[1].startsWith('раздел');
     if(isDivide && b === 0) return 'На ноль делить нельзя.';
     const result = isDivide ? a / b : a * b;
-    const rounded = Math.round(result * 10000) / 10000;
-    const resultStr = Number.isInteger(rounded) ? rounded.toString() : rounded.toString().replace('.', ',');
-    return `Будет ${resultStr}.`;
+    return `Будет ${formatMathResult(result)}.`;
   }
 
   let s = normalizeMathWords(raw);
@@ -1276,13 +1343,10 @@ function tryMathCommand(said){
       result = a / b; break;
     default: return null;
   }
-  // clean up floating point noise, keep decimals only when needed
-  result = Math.round(result * 10000) / 10000;
-  const resultStr = Number.isInteger(result) ? result.toString() : result.toString().replace('.', ',');
-  return `Будет ${resultStr}.`;
+  return `Будет ${formatMathResult(result)}.`;
 }
 
-// ---- Timer / alarm ----
+// ---- Timer ----
 const NUM_WORDS = { 'одну':1,'один':1,'одна':1,'две':2,'два':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,
   'пятнадцать':15,'двадцать':20,'тридцать':30,'сорок':40,'сорок пять':45,'шестьдесят':60 };
 function parseNumber(token){
@@ -1311,7 +1375,7 @@ function tryTimerCommand(said){
   return `Таймер установлен на ${amount} ${unitWord}.`;
 }
 function triggerAlarm(){
-  core.classList.add('listening'); // reuse red pulse styling
+  core.classList.add('listening');
   let rings = 0;
   const iv = setInterval(()=>{
     beep(880,0.15,'square',0.05);
@@ -1322,17 +1386,13 @@ function triggerAlarm(){
   pushHistory('(таймер)', 'Время вышло.');
 }
 
-// ---- Web Speech API Recognition ----
+// ---- Web Speech API ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let listening = false;
 let wakeMode = false;
 let restartAttempts = 0;
 const core = document.getElementById('core');
-
-// ---- Dialogue context (pronoun resolution) ----
-let lastTopic = null;
-const PRONOUN_RE = /\b(он|она|оно|они|его|её|ему|ей|им|них|нём|ней|этот|эта|это|тот|та)\b/i;
 
 async function handleUtterance(said){
   showStatus('Обработка...');
@@ -1341,7 +1401,7 @@ async function handleUtterance(said){
   speak(reply);
 }
 
-// ---- Text input (keyboard alternative to voice) ----
+// ---- Text input ----
 const textInput = document.getElementById('textInput');
 const textSendBtn = document.getElementById('textSendBtn');
 function submitTextQuery(){
@@ -1357,11 +1417,9 @@ textSendBtn.addEventListener('click', submitTextQuery);
 textInput.addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){ e.preventDefault(); submitTextQuery(); }
 });
-// pause the idle ambient typing while the person is actively typing their own question
 textInput.addEventListener('focus', ()=>{ clearTimeout(idleTimer); });
 
 function pickBestAlternative(result){
-  // choose the alternative with highest confidence instead of always index 0
   let best = result[0];
   for(let i=1;i<result.length;i++){
     if((result[i].confidence||0) > (best.confidence||0)) best = result[i];
@@ -1375,7 +1433,6 @@ if(SR){
   recognition.interimResults = true;
   recognition.maxAlternatives = 3;
 
-  // grammar hint: nudges recognition toward our command vocabulary (Chrome-only, harmless elsewhere)
   const SGL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
   if(SGL){
     try{
@@ -1391,7 +1448,6 @@ if(SR){
     const transcript = pickBestAlternative(result);
 
     if(!result.isFinal){
-      // live partial feedback so the person can see it's actually hearing them
       showStatus(transcript.length > 26 ? transcript.slice(0,26)+'…' : (transcript || 'Слушаю...'), 'listening');
       return;
     }
@@ -1410,7 +1466,6 @@ if(SR){
   recognition.onerror = (err)=>{
     console.error(err);
     if(wakeMode){
-      // 'no-speech' happens constantly in continuous mode - just let onend restart it
       return;
     }
     stopListening();
@@ -1464,7 +1519,6 @@ core.addEventListener('click', (e)=>{
   initAudio();
   if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   
-  // Эффект взрывной волны при клике
   spawnRipple(e.clientX, e.clientY);
   
   if(listening){
@@ -1475,8 +1529,7 @@ core.addEventListener('click', (e)=>{
   }
 });
 
-// Init on Load
-// ---- Starfield background ----
+// ---- Starfield ----
 (function initStarfield(){
   const canvas = document.getElementById('starfield');
   if(!canvas) return;
