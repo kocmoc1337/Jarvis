@@ -1184,6 +1184,9 @@ async function craftReply(said){
   if(s.includes('спасибо')) return 'Всегда рад помочь.';
   if(s.includes('кто ты') || s.includes('джарвис ты кто')) return 'Я Джарвис — голосовой интерфейс с доступом к Википедии, погоде, переводчику, заметкам и таймерам.';
 
+  const mathReply = tryMathCommand(said);
+  if(mathReply !== null) return mathReply;
+
   const timerReply = tryTimerCommand(said);
   if(timerReply !== null) return timerReply;
 
@@ -1217,6 +1220,66 @@ async function craftReply(said){
     triggerGlitch(500); // Глитч при ошибке поиска
     return 'Не удалось найти информацию по запросу «' + query + '».';
   }
+}
+
+// ---- Simple arithmetic ("2+2", "сколько будет 5 умножить на 3") ----
+const OP_WORDS = {
+  'плюс':'+', 'прибавить':'+',
+  'минус':'-', 'отнять':'-',
+  'умножить на':'*', 'умножить':'*', 'на':'*', 'помножить на':'*',
+  'разделить на':'/', 'раздели на':'/', 'разделить':'/'
+};
+function normalizeMathWords(s){
+  return s
+    .replace(/умножить на/gi, '*')
+    .replace(/помножить на/gi, '*')
+    .replace(/раздели(ть)? на/gi, '/')
+    .replace(/умножить/gi, '*')
+    .replace(/плюс/gi, '+')
+    .replace(/прибавить/gi, '+')
+    .replace(/минус/gi, '-')
+    .replace(/отнять/gi, '-')
+    .replace(/[×хx]/gi, '*')
+    .replace(/,/g, '.');
+}
+function tryMathCommand(said){
+  const raw = said.toLowerCase();
+
+  // imperative form: "раздели 10 на 4", "умножь 5 на 3"
+  const impMatch = raw.match(/(раздел[иь]|умнож[иь])(?:те)?\s+(-?\d+(?:[.,]\d+)?)\s+на\s+(-?\d+(?:[.,]\d+)?)/i);
+  if(impMatch){
+    const a = parseFloat(impMatch[2].replace(',', '.'));
+    const b = parseFloat(impMatch[3].replace(',', '.'));
+    const isDivide = impMatch[1].startsWith('раздел');
+    if(isDivide && b === 0) return 'На ноль делить нельзя.';
+    const result = isDivide ? a / b : a * b;
+    const rounded = Math.round(result * 10000) / 10000;
+    const resultStr = Number.isInteger(rounded) ? rounded.toString() : rounded.toString().replace('.', ',');
+    return `Будет ${resultStr}.`;
+  }
+
+  let s = normalizeMathWords(raw);
+  s = s.replace(/сколько будет|сколько будет равно|посчитай|вычисли|реши/gi, '');
+  const m = s.match(/(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)/);
+  if(!m) return null;
+
+  const a = parseFloat(m[1]);
+  const op = m[2];
+  const b = parseFloat(m[3]);
+  let result;
+  switch(op){
+    case '+': result = a + b; break;
+    case '-': result = a - b; break;
+    case '*': result = a * b; break;
+    case '/':
+      if(b === 0) return 'На ноль делить нельзя.';
+      result = a / b; break;
+    default: return null;
+  }
+  // clean up floating point noise, keep decimals only when needed
+  result = Math.round(result * 10000) / 10000;
+  const resultStr = Number.isInteger(result) ? result.toString() : result.toString().replace('.', ',');
+  return `Будет ${resultStr}.`;
 }
 
 // ---- Timer / alarm ----
