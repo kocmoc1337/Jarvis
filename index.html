@@ -335,6 +335,107 @@
   .status-pill.show { opacity: 1; }
   .status-pill.listening { color: var(--red); border-color: rgba(255,77,94,0.5); }
 
+  .ctrl-row {
+    position: fixed;
+    bottom: 16px;
+    left: 20px;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 40px);
+  }
+  .ctrl-btn {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(79,216,255,0.5);
+    border: 1px solid rgba(79,216,255,0.3);
+    background: rgba(3,10,16,0.5);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: inherit;
+    transition: all 0.2s;
+    backdrop-filter: blur(6px);
+  }
+  .ctrl-btn:hover {
+    color: var(--blue);
+    border-color: var(--blue);
+    background: rgba(79,216,255,0.08);
+    box-shadow: 0 0 12px rgba(79,216,255,0.2);
+  }
+  .ctrl-btn.active {
+    color: var(--bg);
+    background: var(--blue);
+    border-color: var(--blue);
+    box-shadow: 0 0 14px rgba(79,216,255,0.5);
+  }
+
+  .wake-input {
+    background: rgba(3,10,16,0.75);
+    border: 1px solid rgba(79,216,255,0.35);
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 10px;
+    width: 100px;
+    outline: none;
+    backdrop-filter: blur(4px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .wake-input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 12px rgba(79,216,255,0.35);
+  }
+  .wake-input::placeholder {
+    color: rgba(79,216,255,0.3);
+    text-transform: none;
+    letter-spacing: 0.5px;
+  }
+
+  .photo-preview {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+    max-width: 80vw;
+    max-height: 60vh;
+    border-radius: 16px;
+    border: 2px solid var(--blue);
+    box-shadow: 0 0 40px rgba(79,216,255,0.3);
+    display: none;
+    background: #020409;
+    padding: 8px;
+  }
+  .photo-preview.show {
+    display: block;
+  }
+  .photo-preview img {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 12px;
+  }
+  .photo-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: var(--red);
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(255,77,94,0.3);
+  }
+
+  .core-wrap.wake .ring.r4{ border-color: rgba(255,178,56,0.6); animation-duration: 8s; }
+
   .text-input-wrap{
     position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
     z-index: 20; display: flex; gap: 8px; align-items: center;
@@ -370,8 +471,6 @@
   .hist-item .q::before{ content: '» '; color: var(--red); }
   .hist-item .a{ font-size: 11px; color: rgba(143,232,255,0.75); line-height: 1.5; }
   .hist-empty{ font-size: 11px; color: rgba(79,216,255,0.4); }
-
-  ::selection { background: var(--blue); color: #02121c; }
 
   .particle-field {
     position: absolute;
@@ -474,7 +573,6 @@
     0% { width: 0; height: 0; opacity: 1; transform: translate(-50%, -50%); }
     100% { width: 600px; height: 600px; opacity: 0; transform: translate(-50%, -50%); border-color: var(--red); }
   }
-
   ::selection { background: var(--blue); color: #02121c; }
 </style>
 </head>
@@ -482,7 +580,7 @@
 
 <canvas id="starfield" style="position:fixed;inset:0;z-index:-1;"></canvas>
 <div class="nebula"></div>
-<div class="grid-bg" id="gridBg"></div>
+<div class="grid-bg"></div>
 <div class="scanline"></div>
 <div class="vignette"></div>
 
@@ -557,8 +655,11 @@
 
 <div class="ctrl-row">
   <button class="ctrl-btn" id="muteBtn">Звук: вкл</button>
-  <button class="ctrl-btn" id="wakeBtn">Wake word: выкл</button>
+  <button class="ctrl-btn" id="wakeBtn">Wake: выкл</button>
   <button class="ctrl-btn" id="histBtn">История</button>
+  <button class="ctrl-btn" id="resetBtn">Сброс</button>
+  <button class="ctrl-btn" id="cameraBtn">📷 Фото</button>
+  <input type="text" class="wake-input" id="wakeWordInput" placeholder="Джарвис" maxlength="20" />
 </div>
 
 <div class="history-drawer" id="histDrawer">
@@ -566,14 +667,20 @@
   <div id="histList"><div class="hist-empty">Пока пусто. Спроси что-нибудь голосом.</div></div>
 </div>
 
+<div class="photo-preview" id="photoPreview">
+  <button class="photo-close" id="photoClose">✕</button>
+  <img id="photoImage" src="" alt="Фото" />
+</div>
+
 <div class="credit">by <span>@newince</span> | verifactor</div>
 
 <script>
-// =====================================================
-// 🔐 КЛЮЧ СПРЯТАН В CLOUDFLARE WORKER
-// Worker URL: https://jarvis-proxy.egar3864.workers.dev/
-// =====================================================
-const GEMINI_WORKER_URL = 'https://jarvis-proxy.egar3864.workers.dev/';
+// ============================================================
+// 🔐 БЕЗОПАСНАЯ ВЕРСИЯ — API-КЛЮЧ ХРАНИТСЯ В CLOUDFLARE WORKER
+// Worker URL: https://jarvis-proxy.egar3864.workers.dev
+// ============================================================
+
+const GEMINI_WORKER_URL = 'https://jarvis-proxy.egar3864.workers.dev';
 
 // ---- Web Audio Setup & Analyser Nodes ----
 let audioCtx = null;
@@ -584,14 +691,12 @@ let dataArray = null;
 let sourceMic = null;
 let visualizerAnimationId = null;
 
-function initAudio(){
-  if(audioCtx) return;
+function initAudio() {
+  if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
   humGain = audioCtx.createGain();
   humGain.gain.value = soundOn ? 0.035 : 0;
   humGain.connect(audioCtx.destination);
-
   const o1 = audioCtx.createOscillator();
   o1.type = 'sine'; o1.frequency.value = 82;
   const o2 = audioCtx.createOscillator();
@@ -601,8 +706,8 @@ function initAudio(){
   hum = [o1, o2];
 }
 
-function beep(freq=880, dur=0.08, type='sine', vol=0.06){
-  if(!soundOn) return;
+function beep(freq=880, dur=0.08, type='sine', vol=0.06) {
+  if (!soundOn) return;
   initAudio();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   const osc = audioCtx.createOscillator();
@@ -617,17 +722,17 @@ function beep(freq=880, dur=0.08, type='sine', vol=0.06){
   osc.stop(now + dur + 0.02);
 }
 
-function chime(){
+function chime() {
   beep(660,0.1,'sine',0.05);
   setTimeout(()=>beep(880,0.14,'sine',0.05), 90);
   setTimeout(()=>beep(1180,0.18,'sine',0.04), 180);
 }
 
-document.getElementById('muteBtn').addEventListener('click', (e)=>{
+document.getElementById('muteBtn').addEventListener('click', (e) => {
   soundOn = !soundOn;
   e.target.textContent = 'Звук: ' + (soundOn ? 'вкл' : 'выкл');
-  if(humGain) humGain.gain.value = soundOn ? 0.035 : 0;
-  if(soundOn) beep(700,0.06);
+  if (humGain) humGain.gain.value = soundOn ? 0.035 : 0;
+  if (soundOn) beep(700,0.06);
 });
 
 async function initRealVisualizer() {
@@ -636,17 +741,14 @@ async function initRealVisualizer() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     initAudio();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    
     sourceMic = audioCtx.createMediaStreamSource(stream);
     audioAnalyser = audioCtx.createAnalyser();
-    audioAnalyser.fftSize = 64; 
+    audioAnalyser.fftSize = 64;
     sourceMic.connect(audioAnalyser);
-    
-    const bufferLength = audioAnalyser.frequencyBinCount;
-    dataArray = new Uint8Array(bufferLength);
+    dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
     animateVisualizer();
   } catch (e) {
-    console.warn("Микрофон недоступен для эквалайзера, запущен симуляционный режим.", e);
+    console.warn('Микрофон недоступен, симуляция', e);
     animateFakeVisualizer();
   }
 }
@@ -654,13 +756,12 @@ async function initRealVisualizer() {
 function animateVisualizer() {
   visualizerAnimationId = requestAnimationFrame(animateVisualizer);
   if (!audioAnalyser) return;
-  
   if (listening || speaking) {
     audioAnalyser.getByteFrequencyData(dataArray);
     waveBars.forEach((bar, index) => {
       const value = dataArray[index % dataArray.length];
       const percent = (value / 255) * 45;
-      bar.style.height = `${Math.max(6, percent)}px`;
+      bar.style.height = Math.max(6, percent) + 'px';
     });
   } else {
     waveBars.forEach(b => b.style.height = '6px');
@@ -671,8 +772,7 @@ function animateFakeVisualizer() {
   visualizerAnimationId = requestAnimationFrame(animateFakeVisualizer);
   if (listening || speaking) {
     waveBars.forEach(bar => {
-      const percent = 6 + Math.random() * 26;
-      bar.style.height = `${percent}px`;
+      bar.style.height = (6 + Math.random() * 26) + 'px';
     });
   } else {
     waveBars.forEach(b => b.style.height = '6px');
@@ -695,18 +795,14 @@ window.addEventListener('mousemove', (e) => {
   const cy = window.innerHeight / 2;
   const dx = (e.clientX - cx) / cx;
   const dy = (e.clientY - cy) / cy;
-
   coreWrap.style.transform = `rotateX(${dy * -12}deg) rotateY(${dx * 12}deg)`;
-
   panels.forEach(p => {
-    if (p.el) {
-      p.el.style.transform = `translate(${dx * p.mx}px, ${dy * p.my}px)`;
-    }
+    if (p.el) p.el.style.transform = `translate(${dx * p.mx}px, ${dy * p.my}px)`;
   });
 });
 
 window.addEventListener('touchmove', (e) => {
-  if(!e.touches || !e.touches[0]) return;
+  if (!e.touches || !e.touches[0]) return;
   const t = e.touches[0];
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
@@ -719,18 +815,18 @@ window.addEventListener('touchmove', (e) => {
 }, { passive: true });
 
 let tiltEnabled = false;
-function onDeviceTilt(e){
-  if(!tiltEnabled) return;
+function onDeviceTilt(e) {
+  if (!tiltEnabled) return;
   const beta = Math.max(-30, Math.min(30, e.beta || 0));
   const gamma = Math.max(-30, Math.min(30, e.gamma || 0));
   coreWrap.style.transform = `rotateX(${(-beta/2.5).toFixed(1)}deg) rotateY(${(gamma/2.5).toFixed(1)}deg)`;
 }
-async function enableDeviceTilt(){
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    try{
+async function enableDeviceTilt() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
       const perm = await DeviceOrientationEvent.requestPermission();
-      if(perm !== 'granted') return false;
-    }catch(e){ return false; }
+      if (perm !== 'granted') return false;
+    } catch (e) { return false; }
   }
   window.addEventListener('deviceorientation', onDeviceTilt);
   tiltEnabled = true;
@@ -740,8 +836,8 @@ async function enableDeviceTilt(){
 function spawnRipple(x, y) {
   const ripple = document.createElement('div');
   ripple.className = 'ripple-wave';
-  ripple.style.left = `${x}px`;
-  ripple.style.top = `${y}px`;
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
   document.body.appendChild(ripple);
   setTimeout(() => ripple.remove(), 800);
 }
@@ -749,9 +845,7 @@ function spawnRipple(x, y) {
 function triggerGlitch(duration = 600) {
   beep(120, 0.2, 'sawtooth', 0.04);
   document.body.classList.add('glitch-active');
-  setTimeout(() => {
-    document.body.classList.remove('glitch-active');
-  }, duration);
+  setTimeout(() => document.body.classList.remove('glitch-active'), duration);
 }
 
 function initBatteryUI() {
@@ -761,11 +855,7 @@ function initBatteryUI() {
       function updateBattery() {
         const pct = Math.round(battery.level * 100);
         batVal.textContent = `${pct}% ${battery.charging ? '⚡' : ''}`;
-        if (pct < 20 && !battery.charging) {
-          batVal.style.color = 'var(--red)';
-        } else {
-          batVal.style.color = 'var(--fg)';
-        }
+        batVal.style.color = (pct < 20 && !battery.charging) ? 'var(--red)' : 'var(--fg)';
       }
       updateBattery();
       battery.addEventListener('levelchange', updateBattery);
@@ -778,142 +868,158 @@ function initBatteryUI() {
 
 // ---- Orbiting particles ----
 const pField = document.getElementById('particles');
-for(let i=0;i<18;i++){
+for (let i = 0; i < 18; i++) {
   const p = document.createElement('div');
   p.className = 'particle';
-  const r = 140 + Math.random()*90;
-  const dur = 6 + Math.random()*10;
-  const delay = -Math.random()*dur;
-  p.style.setProperty('--r', r+'px');
+  const r = 140 + Math.random() * 90;
+  const dur = 6 + Math.random() * 10;
+  const delay = -Math.random() * dur;
+  p.style.setProperty('--r', r + 'px');
   p.style.top = '50%'; p.style.left = '50%';
-  p.style.animationDuration = dur+'s';
-  p.style.animationDelay = delay+'s';
-  p.style.opacity = (0.3 + Math.random()*0.6).toFixed(2);
+  p.style.animationDuration = dur + 's';
+  p.style.animationDelay = delay + 's';
+  p.style.opacity = (0.3 + Math.random() * 0.6).toFixed(2);
   pField.appendChild(p);
 }
 
 // ---- Side data panel jitter ----
-function jitterBar(barId, pctId, base, range){
-  setInterval(()=>{
-    const v = Math.max(4, Math.min(100, base + (Math.random()*range - range/2)));
+function jitterBar(barId, pctId, base, range) {
+  setInterval(() => {
+    const v = Math.max(4, Math.min(100, base + (Math.random() * range - range / 2)));
     const bar = document.getElementById(barId);
     const pct = document.getElementById(pctId);
-    if(bar) bar.style.width = v.toFixed(0)+'%';
-    if(pct) pct.textContent = v.toFixed(0)+'%';
-  }, 1600 + Math.random()*800);
+    if (bar) bar.style.width = v.toFixed(0) + '%';
+    if (pct) pct.textContent = v.toFixed(0) + '%';
+  }, 1600 + Math.random() * 800);
 }
-jitterBar('loadBar','loadPct',62,20);
-jitterBar('netBar','netPct',88,10);
-jitterBar('memBar','memPct',41,16);
+jitterBar('loadBar', 'loadPct', 62, 20);
+jitterBar('netBar', 'netPct', 88, 10);
+jitterBar('memBar', 'memPct', 41, 16);
 
 let reqCount = 0;
-function bumpReq(source){
+function bumpReq(source) {
   reqCount++;
   const el = document.getElementById('reqVal');
-  if(el) el.textContent = reqCount;
+  if (el) el.textContent = reqCount;
   const lat = document.getElementById('latVal');
-  if(lat) lat.textContent = (80 + Math.floor(Math.random()*160)) + 'ms';
-  if(source){ const s = document.getElementById('srcVal'); if(s) s.textContent = source; }
+  if (lat) lat.textContent = (80 + Math.floor(Math.random() * 160)) + 'ms';
+  if (source) { const s = document.getElementById('srcVal'); if (s) s.textContent = source; }
 }
 
 // ---- History drawer ----
 const history = [];
-function pushHistory(q, a){
-  history.unshift({q, a});
-  if(history.length > 8) history.pop();
+function pushHistory(q, a) {
+  history.unshift({ q, a });
+  if (history.length > 8) history.pop();
   renderHistory();
 }
-function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function renderHistory(){
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderHistory() {
   const list = document.getElementById('histList');
-  if(!list) return;
-  if(history.length === 0){ list.innerHTML = '<div class="hist-empty">Пока пусто. Спроси что-нибудь голосом.</div>'; return; }
+  if (!list) return;
+  if (history.length === 0) {
+    list.innerHTML = '<div class="hist-empty">Пока пусто. Спроси что-нибудь голосом.</div>';
+    return;
+  }
   list.innerHTML = history.map(h => `<div class="hist-item"><div class="q">${escapeHtml(h.q)}</div><div class="a">${escapeHtml(h.a)}</div></div>`).join('');
 }
 const histBtn = document.getElementById('histBtn');
 const histDrawer = document.getElementById('histDrawer');
-if(histBtn){
-  histBtn.addEventListener('click', ()=>{
+if (histBtn) {
+  histBtn.addEventListener('click', () => {
     histDrawer.classList.toggle('open');
     histBtn.classList.toggle('active');
   });
 }
 
+const resetBtn = document.getElementById('resetBtn');
+if (resetBtn) {
+  resetBtn.addEventListener('click', () => {
+    history.length = 0;
+    lastTopic = null;
+    renderHistory();
+    beep(500, 0.08, 'sine', 0.05);
+    typeText('Начинаю новый диалог.', () => {
+      setTimeout(() => eraseText(() => { idleLoop(); }), 1800);
+    });
+  });
+}
+
 // ---- Notes via localStorage ----
-function loadNotes(){ try{ return JSON.parse(localStorage.getItem('jarvisNotes') || '[]'); }catch(e){ return []; } }
-function saveNote(text){
+function loadNotes() { try { return JSON.parse(localStorage.getItem('jarvisNotes') || '[]'); } catch (e) { return []; } }
+function saveNote(text) {
   const notes = loadNotes();
   notes.push(text);
-  try{ localStorage.setItem('jarvisNotes', JSON.stringify(notes)); }catch(e){}
+  try { localStorage.setItem('jarvisNotes', JSON.stringify(notes)); } catch (e) {}
 }
 
 // ---- Quick commands ----
 const CITY_TZ = {
-  'москве':'Europe/Moscow', 'москва':'Europe/Moscow',
-  'лондоне':'Europe/London', 'лондон':'Europe/London',
-  'нью-йорке':'America/New_York', 'нью-йорк':'America/New_York',
-  'токио':'Asia/Tokyo',
-  'париже':'Europe/Paris', 'париж':'Europe/Paris',
-  'берлине':'Europe/Berlin', 'берлин':'Europe/Berlin',
-  'дубае':'Asia/Dubai', 'дубай':'Asia/Dubai',
-  'пекине':'Asia/Shanghai', 'пекин':'Asia/Shanghai',
-  'сиднее':'Australia/Sydney', 'сидней':'Australia/Sydney'
+  'москве': 'Europe/Moscow', 'москва': 'Europe/Moscow',
+  'лондоне': 'Europe/London', 'лондон': 'Europe/London',
+  'нью-йорке': 'America/New_York', 'нью-йорк': 'America/New_York',
+  'токио': 'Asia/Tokyo',
+  'париже': 'Europe/Paris', 'париж': 'Europe/Paris',
+  'берлине': 'Europe/Berlin', 'берлин': 'Europe/Berlin',
+  'дубае': 'Asia/Dubai', 'дубай': 'Asia/Dubai',
+  'пекине': 'Asia/Shanghai', 'пекин': 'Asia/Shanghai',
+  'сиднее': 'Australia/Sydney', 'сидней': 'Australia/Sydney'
 };
-const LANG_MAP = { 'английский':'en', 'русский':'ru', 'испанский':'es', 'немецкий':'de', 'французский':'fr' };
+const LANG_MAP = { 'английский': 'en', 'русский': 'ru', 'испанский': 'es', 'немецкий': 'de', 'французский': 'fr' };
 const WEATHER_CODES = {
-  0:'ясно', 1:'преимущественно ясно', 2:'переменная облачность', 3:'пасмурно',
-  45:'туман', 48:'изморозь', 51:'лёгкая морось', 61:'дождь', 63:'умеренный дождь',
-  65:'сильный дождь', 71:'снег', 73:'умеренный снег', 75:'сильный снег', 80:'ливень', 95:'гроза'
+  0: 'ясно', 1: 'преимущественно ясно', 2: 'переменная облачность', 3: 'пасмурно',
+  45: 'туман', 48: 'изморозь', 51: 'лёгкая морось', 61: 'дождь', 63: 'умеренный дождь',
+  65: 'сильный дождь', 71: 'снег', 73: 'умеренный снег', 75: 'сильный снег', 80: 'ливень', 95: 'гроза'
 };
 
-async function tryQuickCommands(said){
+async function tryQuickCommands(said) {
   const s = said.toLowerCase();
 
   const tzMatch = s.match(/(?:который час|сколько времени)\s+в\s+([а-яё\-]+)/i);
-  if(tzMatch && CITY_TZ[tzMatch[1]]){
+  if (tzMatch && CITY_TZ[tzMatch[1]]) {
     bumpReq('WORLDCLOCK');
     const tz = CITY_TZ[tzMatch[1]];
-    const time = new Intl.DateTimeFormat('ru-RU', { hour:'2-digit', minute:'2-digit', timeZone: tz }).format(new Date());
+    const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date());
     return `Сейчас в этом городе ${time}.`;
   }
 
-  if(s.includes('погод')){
-    if(!('geolocation' in navigator)) return 'Геолокация недоступна в этом браузере.';
+  if (s.includes('погод')) {
+    if (!('geolocation' in navigator)) return 'Геолокация недоступна в этом браузере.';
     bumpReq('OPEN-METEO');
-    try{
-      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout:6000 }));
+    try {
+      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 }));
       const { latitude, longitude } = pos.coords;
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
       const data = await res.json();
       const cw = data.current_weather;
       const desc = WEATHER_CODES[cw.weathercode] || 'переменные условия';
       return `Сейчас на улице ${desc}, температура ${Math.round(cw.temperature)} градусов, ветер ${Math.round(cw.windspeed)} километров в час.`;
-    }catch(e){ return 'Не удалось получить данные о погоде. Проверьте доступ к геолокации.'; }
+    } catch (e) { return 'Не удалось получить данные о погоде. Проверьте доступ к геолокации.'; }
   }
 
   const trMatch = s.match(/переведи(?:\s+слово|\s+фразу)?\s+(.+?)\s+на\s+(английский|русский|испанский|немецкий|французский)/i);
-  if(trMatch){
+  if (trMatch) {
     bumpReq('MYMEMORY');
     const text = trMatch[1];
     const targetLang = LANG_MAP[trMatch[2]];
     const sourceLang = targetLang === 'en' ? 'ru' : 'en';
-    try{
+    try {
       const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`);
       const data = await res.json();
       const translated = data?.responseData?.translatedText;
-      if(!translated) throw new Error('no translation');
+      if (!translated) throw new Error('no translation');
       return `Перевод: ${translated}`;
-    }catch(e){ return 'Не удалось выполнить перевод.'; }
+    } catch (e) { return 'Не удалось выполнить перевод.'; }
   }
 
   const rememberMatch = said.match(/^запомни[,]?\s+(.+)/i);
-  if(rememberMatch){
+  if (rememberMatch) {
     saveNote(rememberMatch[1].trim());
     return 'Запомнил: «' + rememberMatch[1].trim() + '».';
   }
-  if(/напомни.*запомнить|что я (просил )?запомнить|что я записал/i.test(s)){
+  if (/напомни.*запомнить|что я (просил )?запомнить|что я записал/i.test(s)) {
     const notes = loadNotes();
-    if(notes.length === 0) return 'У меня нет сохранённых заметок.';
+    if (notes.length === 0) return 'У меня нет сохранённых заметок.';
     return 'Вот что вы просили запомнить: ' + notes.slice(-3).join('; ') + '.';
   }
 
@@ -921,32 +1027,32 @@ async function tryQuickCommands(said){
 }
 
 // ---- Clock ----
-function tick(){
+function tick() {
   const d = new Date();
   document.getElementById('clock').textContent = d.toLocaleTimeString('ru-RU');
 }
-setInterval(tick,1000); tick();
+setInterval(tick, 1000); tick();
 
 // ---- Diagnostics jitter ----
-setInterval(()=>{
-  const v = (97 + Math.random()*2.9).toFixed(1);
+setInterval(() => {
+  const v = (97 + Math.random() * 2.9).toFixed(1);
   document.getElementById('diag').textContent = v + '%';
 }, 1400);
 
 // ---- Tick ring generation ----
 const svg = document.getElementById('ticksvg');
 const cx = 210, cy = 210, rOuter = 205, rInner = 192;
-for(let i=0;i<72;i++){
-  const angle = (i/72) * Math.PI * 2;
+for (let i = 0; i < 72; i++) {
+  const angle = (i / 72) * Math.PI * 2;
   const long = i % 6 === 0;
   const rI = long ? rInner - 10 : rInner;
-  const x1 = cx + rOuter*Math.cos(angle);
-  const y1 = cy + rOuter*Math.sin(angle);
-  const x2 = cx + rI*Math.cos(angle);
-  const y2 = cy + rI*Math.sin(angle);
-  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-  line.setAttribute('x1',x1); line.setAttribute('y1',y1);
-  line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+  const x1 = cx + rOuter * Math.cos(angle);
+  const y1 = cy + rOuter * Math.sin(angle);
+  const x2 = cx + rI * Math.cos(angle);
+  const y2 = cy + rI * Math.sin(angle);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
   line.setAttribute('stroke', long ? 'rgba(79,216,255,0.75)' : 'rgba(79,216,255,0.25)');
   line.setAttribute('stroke-width', long ? 1.6 : 1);
   svg.appendChild(line);
@@ -955,7 +1061,7 @@ for(let i=0;i<72;i++){
 // ---- Waveform bars ----
 const wave = document.getElementById('wave');
 const waveBars = [];
-for(let i=0;i<28;i++){
+for (let i = 0; i < 28; i++) {
   const b = document.createElement('div');
   b.className = 'bar';
   wave.appendChild(b);
@@ -970,11 +1076,11 @@ function setWaveColors(mode) {
 
 // ---- Dialogue Text Processing ----
 const idlePhrases = [
-  "Доброе утро. Все системы функционируют штатно.",
-  "Диагностика завершена. Аномалий не обнаружено.",
-  "Ожидаю дальнейших указаний.",
-  "Уровень мощности стабилен на отметке 100%.",
-  "Сканирование окружения завершено."
+  'Доброе утро. Все системы функционируют штатно.',
+  'Диагностика завершена. Аномалий не обнаружено.',
+  'Ожидаю дальнейших указаний.',
+  'Уровень мощности стабилен на отметке 100%.',
+  'Сканирование окружения завершено.'
 ];
 const respEl = document.getElementById('response');
 const statusPill = document.getElementById('statusPill');
@@ -982,48 +1088,47 @@ let pi = 0;
 let idleTimer = null;
 let speaking = false;
 
-function showStatus(text, listeningMode){
+function showStatus(text, listeningMode) {
   statusPill.textContent = text;
   statusPill.classList.add('show');
   statusPill.classList.toggle('listening', listeningMode === 'listening');
 }
-function hideStatusSoon(){
-  setTimeout(()=> statusPill.classList.remove('show'), 1800);
+function hideStatusSoon() {
+  setTimeout(() => statusPill.classList.remove('show'), 1800);
 }
 
-function typeText(text, onDone){
+function typeText(text, onDone) {
   let i = 0;
   clearInterval(respEl._typeIv);
-  function step(){
-    respEl.innerHTML = text.slice(0,i) + '<span class="cursor"></span>';
+  function step() {
+    respEl.innerHTML = text.slice(0, i) + '<span class="cursor"></span>';
     i++;
-    if(i <= text.length){ 
-      respEl._typeIv = setTimeout(step, 26); 
-    }
-    else if(onDone){ onDone(); }
+    if (i <= text.length) {
+      respEl._typeIv = setTimeout(step, 26);
+    } else if (onDone) { onDone(); }
   }
   step();
 }
 
-function eraseText(onDone){
+function eraseText(onDone) {
   clearInterval(respEl._typeIv);
   let text = respEl.textContent;
   let i = text.length;
-  function step(){
-    if(i > 0){
+  function step() {
+    if (i > 0) {
       i--;
-      respEl.innerHTML = text.slice(0,i) + '<span class="cursor"></span>';
+      respEl.innerHTML = text.slice(0, i) + '<span class="cursor"></span>';
       setTimeout(step, 12);
-    } else if(onDone){ onDone(); }
+    } else if (onDone) { onDone(); }
   }
   step();
 }
 
-function idleLoop(){
-  if(speaking || listening) return;
+function idleLoop() {
+  if (speaking || listening) return;
   const text = idlePhrases[pi % idlePhrases.length];
-  typeText(text, ()=>{
-    idleTimer = setTimeout(()=> eraseText(()=>{
+  typeText(text, () => {
+    idleTimer = setTimeout(() => eraseText(() => {
       pi++;
       idleTimer = setTimeout(idleLoop, 500);
     }), 2600);
@@ -1033,245 +1138,130 @@ function idleLoop(){
 // ---- Voice Synthesis ----
 let cachedVoices = [];
 let voicesReady = false;
-function loadVoices(){
+function loadVoices() {
   cachedVoices = speechSynthesis.getVoices();
-  if(cachedVoices.length) voicesReady = true;
+  if (cachedVoices.length) voicesReady = true;
 }
-if('speechSynthesis' in window){
+if ('speechSynthesis' in window) {
   loadVoices();
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
 let resumeInterval = null;
-function speak(text){
+function speak(text) {
   clearTimeout(idleTimer);
   speaking = true;
   setWaveColors('speaking');
   typeText(text);
 
-  if('speechSynthesis' in window && soundOn){
-    const doSpeak = ()=>{
+  if ('speechSynthesis' in window && soundOn) {
+    const doSpeak = () => {
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'ru-RU';
       utter.pitch = 0.85;
       utter.rate = 1.0;
       const ruVoice = cachedVoices.find(v => v.lang && v.lang.toLowerCase().startsWith('ru'));
-      if(ruVoice) utter.voice = ruVoice;
+      if (ruVoice) utter.voice = ruVoice;
 
       let done = false;
-      const wrapUp = ()=>{ if(done) return; done = true; clearInterval(resumeInterval); finishSpeaking(); };
+      const wrapUp = () => { if (done) return; done = true; clearInterval(resumeInterval); finishSpeaking(); };
       utter.onend = wrapUp;
       utter.onerror = wrapUp;
 
       speechSynthesis.cancel();
-      setTimeout(()=>{
+      setTimeout(() => {
         speechSynthesis.speak(utter);
         clearInterval(resumeInterval);
-        resumeInterval = setInterval(()=>{
-          if(speechSynthesis.speaking && !speechSynthesis.paused){ /* fine */ }
-          else if(speechSynthesis.paused){ speechSynthesis.resume(); }
+        resumeInterval = setInterval(() => {
+          if (speechSynthesis.speaking && !speechSynthesis.paused) { /* fine */ } else if (speechSynthesis.paused) { speechSynthesis.resume(); }
         }, 4000);
         setTimeout(wrapUp, Math.max(3000, text.length * 90));
       }, 40);
     };
 
-    if(voicesReady) doSpeak();
+    if (voicesReady) doSpeak();
     else setTimeout(doSpeak, 250);
   } else {
     setTimeout(finishSpeaking, Math.min(4000, text.length * 60));
   }
 }
 
-function finishSpeaking(){
+function finishSpeaking() {
   speaking = false;
   clearInterval(resumeInterval);
   showStatus('Ожидание');
   hideStatusSoon();
-  idleTimer = setTimeout(()=> eraseText(()=>{ pi++; idleLoop(); }), 2200);
+  idleTimer = setTimeout(() => eraseText(() => { pi++; idleLoop(); }), 2200);
 }
 
-// ---- GEMINI через Cloudflare Worker ----
-const SYSTEM_PROMPT = `Ты — Джарвис, голосовой помощник в интерфейсе Железного человека. Отвечай кратко, по-русски, по делу. Ты умеешь искать информацию, переводить, считать, запоминать заметки, ставить таймеры. Если вопрос неясен — попроси уточнить. Не используй эмодзи. Не говори от третьего лица. Ты — Джарвис.`;
-
-async function askGemini(prompt, historyContext) {
-  const messages = [];
-  
-  messages.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT }] });
-  messages.push({ role: 'model', parts: [{ text: 'Понял. Я Джарвис, готов помогать.' }] });
-  
-  const context = historyContext || [];
-  for (const entry of context) {
-    messages.push({ role: 'user', parts: [{ text: entry.q }] });
-    messages.push({ role: 'model', parts: [{ text: entry.a }] });
-  }
-  
-  messages.push({ role: 'user', parts: [{ text: prompt }] });
-  
-  const payload = { contents: messages };
-  
-  const response = await fetch(GEMINI_WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Worker error: ${response.status} - ${errorText}`);
-  }
-  
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini вернул пустой ответ');
-  
-  return text;
-}
-
-// ---- Wikipedia Fallback ----
-function extractQuery(said){
+// ---- Wikipedia REST API Logic (fallback) ----
+function extractQuery(said) {
   let s = said.trim();
   s = s.replace(/^(джарвис[,]?\s*)/i, '');
   s = s.replace(/^(найди( мне)?|что такое|кто такой|кто такая|расскажи( мне)? про|расскажи( мне)? о|поищи( информацию)?( про| о)?|погугли|информация о)\s+/i, '');
-  s = s.replace(/[?.!]+$/,'');
+  s = s.replace(/[?.!]+$/, '');
   return s.trim();
 }
 
-async function searchWikipedia(query){
+async function searchWikipedia(query) {
   const endpoint = 'https://ru.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(query);
   const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
-  if(!res.ok) throw new Error('not found');
+  if (!res.ok) throw new Error('not found');
   const data = await res.json();
-  if(data.type === 'disambiguation') throw new Error('ambiguous');
+  if (data.type === 'disambiguation') throw new Error('ambiguous');
   return data.extract;
 }
 
-async function searchWikipediaFallback(query){
-  const searchEndpoint = 'https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
-    encodeURIComponent(query) + '&format=json&origin=*';
+async function searchWikipediaFallback(query) {
+  const searchEndpoint = 'https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(query) + '&format=json&origin=*';
   const res = await fetch(searchEndpoint);
   const data = await res.json();
   const hit = data?.query?.search?.[0];
-  if(!hit) throw new Error('no results');
+  if (!hit) throw new Error('no results');
   return searchWikipedia(hit.title);
 }
 
-function trimForSpeech(text, maxLen){
-  if(text.length <= maxLen) return text;
+function trimForSpeech(text, maxLen) {
+  if (text.length <= maxLen) return text;
   const cut = text.slice(0, maxLen);
   const lastDot = cut.lastIndexOf('.');
-  return (lastDot > 40 ? cut.slice(0, lastDot+1) : cut) + '..';
+  return (lastDot > 40 ? cut.slice(0, lastDot + 1) : cut) + '..';
 }
 
-let lastTopic = null;
-const PRONOUN_RE = /\b(он|она|оно|они|его|её|ему|ей|им|них|нём|ней|этот|эта|это|тот|та)\b/i;
-
-// ---- Main reply dispatcher ----
-async function craftReply(said){
-  const s = said.toLowerCase();
-  if(s.includes('привет') || s.includes('здравств')) return 'Здравствуйте. Чем могу помочь?';
-  if(s.includes('время') && !s.includes(' в ')) return 'Сейчас ' + new Date().toLocaleTimeString('ru-RU') + '.';
-  if(s.includes('как дела') || (s.includes('статус') && s.length < 20)) return 'Все системы функционируют в штатном режиме.';
-  if(s.includes('спасибо')) return 'Всегда рад помочь.';
-  if(s.includes('кто ты') || s.includes('джарвис ты кто')) return 'Я Джарвис — голосовой интерфейс с доступом к Википедии, погоде, переводчику, заметкам и таймерам.';
-  if(s.includes('что ты умеешь') || s.includes('что умеешь') || s.includes('список команд') || s.includes('помощь')){
-    return 'Я умею: искать статьи в Википедии, считать примеры вроде «2 плюс 2», говорить погоду и время в городах, переводить фразы, ставить таймер, запоминать заметки, а также отвечать на уточняющие вопросы по предыдущей теме.';
-  }
-
-  const mathReply = tryMathCommand(said);
-  if(mathReply !== null) return mathReply;
-
-  const timerReply = tryTimerCommand(said);
-  if(timerReply !== null) return timerReply;
-
-  const quick = await tryQuickCommands(said);
-  if(quick !== null) return quick;
-
-  let query = extractQuery(said);
-  if(!query || query.length < 2) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
-
-  if(!/[a-zа-яё]/i.test(query)){
-    return 'Не понял, что вы имеете в виду. Можете переформулировать?';
-  }
-
-  if(PRONOUN_RE.test(query) && lastTopic){
-    query = lastTopic;
-  }
-
-  showStatus('Думаю...', 'thinking');
-  setWaveColors('thinking');
-  document.getElementById('core').classList.add('thinking');
-  bumpReq('GEMINI');
-
-  // ПЕРВЫЙ ПРИОРИТЕТ: Gemini через Worker
-  try {
-    const contextHistory = history.slice(0, 6).slice().reverse();
-    const reply = await askGemini(said, contextHistory);
-    document.getElementById('core').classList.remove('thinking');
-    lastTopic = query;
-    const trimmed = trimForSpeech(reply, 420);
-    return trimmed;
-  } catch (err) {
-    console.warn('Gemini через Worker не сработал, пробуем Wikipedia:', err);
-    
-    // ВТОРОЙ ПРИОРИТЕТ: Wikipedia (резерв)
-    document.getElementById('srcVal').textContent = 'WIKIPEDIA (fallback)';
-    try {
-      let extract;
-      try { extract = await searchWikipedia(query); }
-      catch(e) { extract = await searchWikipediaFallback(query); }
-      document.getElementById('core').classList.remove('thinking');
-      if(!extract) return 'По этому запросу ничего не найдено.';
-
-      if(!isRelevantMatch(query, extract)){
-        return `Нашёл статью, но не уверен, что она отвечает на вопрос про «${query}». Попробуйте уточнить запрос.`;
-      }
-
-      lastTopic = query;
-      return trimForSpeech(extract, 420);
-    } catch(err) {
-      document.getElementById('core').classList.remove('thinking');
-      triggerGlitch(500);
-      return 'Не удалось найти информацию по запросу «' + query + '».';
-    }
-  }
+// ---- Relevance guard ----
+function queryWords(q) {
+  return q.toLowerCase().replace(/[^a-zа-яё0-9\s]/gi, ' ').split(/\s+/).filter(w => w.length >= 4);
 }
-
-function queryWords(q){
-  return q.toLowerCase()
-    .replace(/[^a-zа-яё0-9\s]/gi, ' ')
-    .split(/\s+/)
-    .filter(w => w.length >= 4);
-}
-function isRelevantMatch(query, extract){
+function isRelevantMatch(query, extract) {
   const qw = queryWords(query);
-  if(qw.length === 0) return true;
+  if (qw.length === 0) return true;
   const ex = extract.toLowerCase();
   return qw.some(w => ex.includes(w.slice(0, Math.min(5, w.length))));
 }
 
-// ---- Math commands ----
+// ---- Simple arithmetic ----
 const NUM_UNITS = { 'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9 };
 const NUM_TEENS = { 'десять':10,'одиннадцать':11,'двенадцать':12,'тринадцать':13,'четырнадцать':14,'пятнадцать':15,'шестнадцать':16,'семнадцать':17,'восемнадцать':18,'девятнадцать':19 };
 const NUM_TENS = { 'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90 };
 const NUM_HUNDREDS = { 'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900 };
 const NUM_SCALE = { 'тысяча':1000,'тысячи':1000,'тысяч':1000 };
 
-function wordsToNumbers(text){
+function wordsToNumbers(text) {
   const tokens = text.split(/(\s+)/);
   const out = [];
   let i = 0;
-  while(i < tokens.length){
+  while (i < tokens.length) {
     const word = tokens[i].toLowerCase();
-    if(NUM_UNITS[word] !== undefined || NUM_TEENS[word] !== undefined || NUM_TENS[word] !== undefined || NUM_HUNDREDS[word] !== undefined){
+    if (NUM_UNITS[word] !== undefined || NUM_TEENS[word] !== undefined || NUM_TENS[word] !== undefined || NUM_HUNDREDS[word] !== undefined) {
       let total = 0;
       let j = i;
-      while(j < tokens.length){
+      while (j < tokens.length) {
         const w = tokens[j].toLowerCase();
-        if(NUM_HUNDREDS[w] !== undefined){ total += NUM_HUNDREDS[w]; j += 2; continue; }
-        if(NUM_TENS[w] !== undefined){ total += NUM_TENS[w]; j += 2; continue; }
-        if(NUM_TEENS[w] !== undefined){ total += NUM_TEENS[w]; j += 2; continue; }
-        if(NUM_UNITS[w] !== undefined){ total += NUM_UNITS[w]; j += 2; continue; }
-        if(NUM_SCALE[w] !== undefined){ total = (total || 1) * NUM_SCALE[w]; j += 2; continue; }
+        if (NUM_HUNDREDS[w] !== undefined) { total += NUM_HUNDREDS[w]; j += 2; continue; }
+        if (NUM_TENS[w] !== undefined) { total += NUM_TENS[w]; j += 2; continue; }
+        if (NUM_TEENS[w] !== undefined) { total += NUM_TEENS[w]; j += 2; continue; }
+        if (NUM_UNITS[w] !== undefined) { total += NUM_UNITS[w]; j += 2; continue; }
+        if (NUM_SCALE[w] !== undefined) { total = (total || 1) * NUM_SCALE[w]; j += 2; continue; }
         break;
       }
       out.push(total.toString());
@@ -1284,7 +1274,7 @@ function wordsToNumbers(text){
   return out.join('');
 }
 
-function normalizeMathWords(s){
+function normalizeMathWords(s) {
   return wordsToNumbers(s)
     .replace(/умножить на/gi, '*')
     .replace(/помножить на/gi, '*')
@@ -1298,29 +1288,29 @@ function normalizeMathWords(s){
     .replace(/,/g, '.');
 }
 
-function formatMathResult(result){
+function formatMathResult(result) {
   const rounded = Math.round(result * 10000) / 10000;
   return Number.isInteger(rounded) ? rounded.toString() : rounded.toString().replace('.', ',');
 }
 
-function tryMathCommand(said){
+function tryMathCommand(said) {
   const raw = said.toLowerCase();
 
   const pctSource = wordsToNumbers(raw);
   const pctMatch = pctSource.match(/(-?\d+(?:[.,]\d+)?)\s*%?\s*процент(?:ов|а)?\s*от\s*(-?\d+(?:[.,]\d+)?)/i);
-  if(pctMatch){
+  if (pctMatch) {
     const p = parseFloat(pctMatch[1].replace(',', '.'));
     const of = parseFloat(pctMatch[2].replace(',', '.'));
-    return `Будет ${formatMathResult((p/100)*of)}.`;
+    return `Будет ${formatMathResult((p / 100) * of)}.`;
   }
 
   const impSource = wordsToNumbers(raw);
   const impMatch = impSource.match(/(раздел[иь]|умнож[иь])(?:те)?\s+(-?\d+(?:[.,]\d+)?)\s+на\s+(-?\d+(?:[.,]\d+)?)/i);
-  if(impMatch){
+  if (impMatch) {
     const a = parseFloat(impMatch[2].replace(',', '.'));
     const b = parseFloat(impMatch[3].replace(',', '.'));
     const isDivide = impMatch[1].startsWith('раздел');
-    if(isDivide && b === 0) return 'На ноль делить нельзя.';
+    if (isDivide && b === 0) return 'На ноль делить нельзя.';
     const result = isDivide ? a / b : a * b;
     return `Будет ${formatMathResult(result)}.`;
   }
@@ -1328,45 +1318,43 @@ function tryMathCommand(said){
   let s = normalizeMathWords(raw);
   s = s.replace(/сколько будет|сколько будет равно|посчитай|вычисли|реши/gi, '');
   const m = s.match(/(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)/);
-  if(!m) return null;
+  if (!m) return null;
 
   const a = parseFloat(m[1]);
   const op = m[2];
   const b = parseFloat(m[3]);
   let result;
-  switch(op){
+  switch (op) {
     case '+': result = a + b; break;
     case '-': result = a - b; break;
     case '*': result = a * b; break;
-    case '/':
-      if(b === 0) return 'На ноль делить нельзя.';
-      result = a / b; break;
+    case '/': if (b === 0) return 'На ноль делить нельзя.'; result = a / b; break;
     default: return null;
   }
   return `Будет ${formatMathResult(result)}.`;
 }
 
-// ---- Timer ----
+// ---- Timer / alarm ----
 const NUM_WORDS = { 'одну':1,'один':1,'одна':1,'две':2,'два':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,
   'пятнадцать':15,'двадцать':20,'тридцать':30,'сорок':40,'сорок пять':45,'шестьдесят':60 };
-function parseNumber(token){
+function parseNumber(token) {
   const n = parseInt(token, 10);
-  if(!isNaN(n)) return n;
+  if (!isNaN(n)) return n;
   return NUM_WORDS[token.toLowerCase()] || null;
 }
-function tryTimerCommand(said){
+function tryTimerCommand(said) {
   const s = said.toLowerCase();
   const m = s.match(/(?:поставь|включи|заведи)?\s*таймер(?:\s+на)?\s+([а-яё\d]+)\s*(секунд[а-я]*|минут[а-я]*|час[а-я]*)/i);
-  if(!m) return null;
+  if (!m) return null;
   const amount = parseNumber(m[1]);
-  if(!amount) return 'Не расслышал длительность таймера.';
+  if (!amount) return 'Не расслышал длительность таймера.';
   let ms;
-  if(/^секунд/.test(m[2])) ms = amount*1000;
-  else if(/^час/.test(m[2])) ms = amount*3600000;
-  else ms = amount*60000;
+  if (/^секунд/.test(m[2])) ms = amount * 1000;
+  else if (/^час/.test(m[2])) ms = amount * 3600000;
+  else ms = amount * 60000;
 
   document.getElementById('core').classList.add('thinking');
-  setTimeout(()=>{
+  setTimeout(() => {
     document.getElementById('core').classList.remove('thinking');
     triggerAlarm();
   }, ms);
@@ -1374,19 +1362,19 @@ function tryTimerCommand(said){
   const unitWord = /^секунд/.test(m[2]) ? 'секунд' : (/^час/.test(m[2]) ? 'часов' : 'минут');
   return `Таймер установлен на ${amount} ${unitWord}.`;
 }
-function triggerAlarm(){
+function triggerAlarm() {
   core.classList.add('listening');
   let rings = 0;
-  const iv = setInterval(()=>{
-    beep(880,0.15,'square',0.05);
+  const iv = setInterval(() => {
+    beep(880, 0.15, 'square', 0.05);
     rings++;
-    if(rings >= 5){ clearInterval(iv); core.classList.remove('listening'); }
+    if (rings >= 5) { clearInterval(iv); core.classList.remove('listening'); }
   }, 400);
   speak('Время вышло.');
   pushHistory('(таймер)', 'Время вышло.');
 }
 
-// ---- Web Speech API ----
+// ---- Web Speech API Recognition ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let listening = false;
@@ -1394,9 +1382,191 @@ let wakeMode = false;
 let restartAttempts = 0;
 const core = document.getElementById('core');
 
-async function handleUtterance(said){
+// ---- Dialogue context ----
+let lastTopic = null;
+const PRONOUN_RE = /\b(он|она|оно|они|его|её|ему|ей|им|них|нём|ней|этот|эта|это|тот|та)\b/i;
+
+// ---- Gemini через Cloudflare Worker (без ключа) ----
+async function askGeminiWorker(prompt, imageData = null) {
+  const contextHistory = history.slice(0, 6).slice().reverse().flatMap(h => ([
+    { role: 'user', parts: [{ text: h.q }] },
+    { role: 'model', parts: [{ text: h.a }] }
+  ]));
+
+  let userParts = [{ text: prompt }];
+  if (imageData) {
+    userParts.push({
+      inline_data: {
+        mime_type: 'image/jpeg',
+        data: imageData
+      }
+    });
+  }
+  contextHistory.push({ role: 'user', parts: userParts });
+
+  const payload = {
+    contents: contextHistory,
+    systemInstruction: {
+      parts: [{
+        text: 'Ты — Джарвис, голосовой ассистент. Отвечай кратко (1-3 предложения), по-русски, простым текстом без markdown-разметки — твой ответ будет озвучен вслух через синтез речи.'
+      }]
+    },
+    generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+  };
+
+  const res = await fetch(GEMINI_WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (res.status === 429) {
+    throw new Error('QUOTA_EXCEEDED');
+  }
+  if (!res.ok) {
+    throw new Error('Worker error: ' + res.status);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('empty response from Gemini');
+  return text;
+}
+
+// ---- Функция для потокового ответа ----
+function typeTextStream(text, onDone) {
+  let i = 0;
+  clearInterval(respEl._typeIv);
+  respEl.innerHTML = '';
+  function step() {
+    if (i < text.length) {
+      respEl.innerHTML = text.slice(0, i + 1) + '<span class="cursor"></span>';
+      i++;
+      respEl._typeIv = setTimeout(step, 20);
+    } else {
+      respEl.innerHTML = text + '<span class="cursor"></span>';
+      if (onDone) onDone();
+    }
+  }
+  step();
+}
+
+// ---- Обработка квоты ----
+function handleQuotaError() {
+  const msg = 'Дневной лимит Gemini исчерпан. Переключаюсь на Wikipedia.';
+  speak(msg);
+  return msg;
+}
+
+// ---- Функция для фото ----
+async function capturePhoto() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.play();
+    await new Promise(r => video.onloadedmetadata = r);
+    await new Promise(r => setTimeout(r, 500));
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    stream.getTracks().forEach(t => t.stop());
+    video.remove();
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const base64Data = dataUrl.split(',')[1];
+    const preview = document.getElementById('photoPreview');
+    const img = document.getElementById('photoImage');
+    img.src = dataUrl;
+    preview.classList.add('show');
+    speak('Фото сделано. Что вы хотите узнать об этом изображении?');
+    return base64Data;
+  } catch (err) {
+    console.error('Camera error:', err);
+    speak('Не удалось получить доступ к камере.');
+    return null;
+  }
+}
+
+// ---- craftReply с поддержкой Worker ----
+async function craftReply(said, imageData = null) {
+  const s = said.toLowerCase();
+
+  if (s.includes('привет') || s.includes('здравств')) return 'Здравствуйте. Чем могу помочь?';
+  if (s.includes('спасибо')) return 'Всегда рад помочь.';
+  if (s.includes('кто ты') || s.includes('джарвис ты кто')) {
+    return 'Я Джарвис — голосовой интерфейс с доступом к Gemini AI, погоде, переводчику, заметкам и таймерам.';
+  }
+  if (s.includes('что ты умеешь') || s.includes('что умеешь')) {
+    return 'Я умею: отвечать на вопросы через Gemini, показывать погоду, переводить, ставить таймер, запоминать заметки и распознавать фото через камеру.';
+  }
+
+  const mathReply = tryMathCommand(said);
+  if (mathReply !== null) return mathReply;
+
+  const timerReply = tryTimerCommand(said);
+  if (timerReply !== null) return timerReply;
+
+  const rememberMatch = said.match(/^запомни[,]?\s+(.+)/i);
+  if (rememberMatch) {
+    saveNote(rememberMatch[1].trim());
+    return 'Запомнил: «' + rememberMatch[1].trim() + '».';
+  }
+  if (/напомни.*запомнить|что я (просил )?запомнить|что я записал/i.test(s)) {
+    const notes = loadNotes();
+    if (notes.length === 0) return 'У меня нет сохранённых заметок.';
+    return 'Вот что вы просили запомнить: ' + notes.slice(-3).join('; ') + '.';
+  }
+
+  const quick = await tryQuickCommands(said);
+  if (quick !== null) return quick;
+
+  let query = extractQuery(said);
+  if (!query || query.length < 2) return 'Не расслышал тему запроса. Повторите, пожалуйста.';
+
+  // Пробуем Gemini через Worker
+  try {
+    showStatus('Думаю...', 'thinking');
+    setWaveColors('thinking');
+    document.getElementById('core').classList.add('thinking');
+    document.getElementById('srcVal').textContent = 'GEMINI';
+
+    const reply = await askGeminiWorker(said, imageData);
+    document.getElementById('core').classList.remove('thinking');
+    return reply;
+  } catch (err) {
+    document.getElementById('core').classList.remove('thinking');
+    if (err.message === 'QUOTA_EXCEEDED') {
+      return handleQuotaError();
+    }
+    console.warn('Gemini error, falling back to Wikipedia', err);
+    document.getElementById('srcVal').textContent = 'WIKIPEDIA (fallback)';
+  }
+
+  // Wikipedia fallback
+  document.getElementById('srcVal').textContent = 'WIKIPEDIA';
+  try {
+    let extract;
+    try { extract = await searchWikipedia(query); }
+    catch (e) { extract = await searchWikipediaFallback(query); }
+    if (!extract) return 'По этому запросу ничего не найдено.';
+    if (!isRelevantMatch(query, extract)) {
+      return `Нашёл статью, но не уверен, что она отвечает на вопрос про «${query}». Попробуйте уточнить.`;
+    }
+    return trimForSpeech(extract, 420);
+  } catch (err) {
+    triggerGlitch(500);
+    return 'Не удалось найти информацию по запросу «' + query + '».';
+  }
+}
+
+// ---- handleUtterance ----
+let lastPhotoData = null;
+
+async function handleUtterance(said, imageData = null) {
   showStatus('Обработка...');
-  const reply = await craftReply(said);
+  const reply = await craftReply(said, imageData);
   pushHistory(said, reply);
   speak(reply);
 }
@@ -1404,161 +1574,182 @@ async function handleUtterance(said){
 // ---- Text input ----
 const textInput = document.getElementById('textInput');
 const textSendBtn = document.getElementById('textSendBtn');
-function submitTextQuery(){
+function submitTextQuery() {
   const val = textInput.value.trim();
-  if(!val) return;
+  if (!val) return;
   textInput.value = '';
   initAudio();
-  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  if(/^(стоп|замолчи|хватит)$/i.test(val)){ interruptSpeech(); return; }
-  handleUtterance(val);
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (/^(стоп|замолчи|хватит)$/i.test(val)) { interruptSpeech(); return; }
+  if (lastPhotoData) {
+    const photoData = lastPhotoData;
+    lastPhotoData = null;
+    document.getElementById('photoPreview').classList.remove('show');
+    handleUtterance(val, photoData);
+  } else {
+    handleUtterance(val);
+  }
 }
 textSendBtn.addEventListener('click', submitTextQuery);
-textInput.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter'){ e.preventDefault(); submitTextQuery(); }
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); submitTextQuery(); }
 });
-textInput.addEventListener('focus', ()=>{ clearTimeout(idleTimer); });
+textInput.addEventListener('focus', () => { clearTimeout(idleTimer); });
 
-function pickBestAlternative(result){
+function pickBestAlternative(result) {
   let best = result[0];
-  for(let i=1;i<result.length;i++){
-    if((result[i].confidence||0) > (best.confidence||0)) best = result[i];
+  for (let i = 1; i < result.length; i++) {
+    if ((result[i].confidence || 0) > (best.confidence || 0)) best = result[i];
   }
   return best.transcript;
 }
 
-if(SR){
+// ---- Распознавание речи ----
+if (SR) {
   recognition = new SR();
   recognition.lang = 'ru-RU';
   recognition.interimResults = true;
   recognition.maxAlternatives = 3;
 
   const SGL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
-  if(SGL){
-    try{
+  if (SGL) {
+    try {
       const grammar = '#JSGF V1.0; grammar commands; public <command> = джарвис | привет | погода | переведи | который час | что такое | кто такой | расскажи про | запомни | таймер | стоп ;';
       const list = new SGL();
       list.addFromString(grammar, 1);
       recognition.grammars = list;
-    }catch(e){}
+    } catch (e) {}
   }
 
-  recognition.onresult = (e)=>{
-    const result = e.results[e.results.length-1];
+  recognition.onresult = (e) => {
+    const result = e.results[e.results.length - 1];
     const transcript = pickBestAlternative(result);
 
-    if(!result.isFinal){
-      showStatus(transcript.length > 26 ? transcript.slice(0,26)+'…' : (transcript || 'Слушаю...'), 'listening');
+    if (!result.isFinal) {
+      showStatus(transcript.length > 26 ? transcript.slice(0, 26) + '…' : (transcript || 'Слушаю...'), 'listening');
       return;
     }
 
     restartAttempts = 0;
-    if(wakeMode){
-      if(!/джарвис/i.test(transcript)) return;
-      const stripped = transcript.replace(/^.*?джарвис[,]?\s*/i, '').trim();
-      if(/^(стоп|замолчи|хватит)/i.test(stripped)){ interruptSpeech(); return; }
-      setTimeout(()=> handleUtterance(stripped || transcript), 150);
+    const wakeWordInput = document.getElementById('wakeWordInput');
+    const wakeWord = wakeWordInput.value.trim() || 'джарвис';
+
+    if (wakeMode) {
+      if (!new RegExp(wakeWord, 'i').test(transcript)) return;
+      const stripped = transcript.replace(new RegExp(`^.*?${wakeWord}[,.]?\\s*`, 'i'), '').trim();
+      if (/^(стоп|замолчи|хватит)/i.test(stripped)) { interruptSpeech(); return; }
+      setTimeout(() => handleUtterance(stripped || transcript), 150);
     } else {
-      if(/^(стоп|замолчи|хватит)$/i.test(transcript.trim())){ interruptSpeech(); return; }
-      setTimeout(()=> handleUtterance(transcript), 150);
+      if (/^(стоп|замолчи|хватит)$/i.test(transcript.trim())) { interruptSpeech(); return; }
+      setTimeout(() => handleUtterance(transcript), 150);
     }
   };
-  recognition.onerror = (err)=>{
+
+  recognition.onerror = (err) => {
     console.error(err);
-    if(wakeMode){
-      return;
-    }
+    if (wakeMode) return;
     stopListening();
-    if(err.error !== 'no-speech' && err.error !== 'aborted'){
+    if (err.error !== 'no-speech' && err.error !== 'aborted') {
       triggerGlitch(700);
       speak('Не удалось распознать голос. Попробуйте ещё раз.');
     }
   };
-  recognition.onend = ()=>{
-    if(wakeMode){
+
+  recognition.onend = () => {
+    if (wakeMode) {
       restartAttempts++;
       const delay = Math.min(1500, 150 * restartAttempts);
-      setTimeout(()=>{ try{ recognition.start(); }catch(e){} }, delay);
+      setTimeout(() => { try { recognition.start(); } catch (e) {} }, delay);
+    } else {
+      stopListening();
     }
-    else{ stopListening(); }
   };
 }
 
-function interruptSpeech(){
-  if('speechSynthesis' in window) speechSynthesis.cancel();
+function interruptSpeech() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
   finishSpeaking();
-  beep(300,0.08,'square',0.04);
+  beep(300, 0.08, 'square', 0.04);
 }
 
-function startListening(){
-  if(!recognition){
+function startListening() {
+  if (!recognition) {
     speak('Голосовой ввод не поддерживается этим браузером.');
     return;
   }
   clearTimeout(idleTimer);
   clearInterval(respEl._typeIv);
   respEl.innerHTML = '<span class="cursor"></span>';
-  
   initAudio();
   initRealVisualizer();
-  
   listening = true;
   core.classList.add('listening');
   showStatus('Слушаю...', 'listening');
   setWaveColors('listening');
   chime();
-  try{ recognition.start(); }catch(e){}
+  try { recognition.start(); } catch (e) {}
 }
 
-function stopListening(){
+function stopListening() {
   listening = false;
   core.classList.remove('listening');
 }
 
-core.addEventListener('click', (e)=>{
+core.addEventListener('click', (e) => {
   initAudio();
-  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   spawnRipple(e.clientX, e.clientY);
-  
-  if(listening){
-    if(recognition) recognition.stop();
+  if (listening) {
+    if (recognition) recognition.stop();
     stopListening();
   } else {
     startListening();
   }
 });
 
+// ---- Камера ----
+document.getElementById('cameraBtn').addEventListener('click', async () => {
+  const data = await capturePhoto();
+  if (data) {
+    lastPhotoData = data;
+  }
+});
+
+document.getElementById('photoClose').addEventListener('click', () => {
+  document.getElementById('photoPreview').classList.remove('show');
+  lastPhotoData = null;
+});
+
 // ---- Starfield ----
-(function initStarfield(){
+(function initStarfield() {
   const canvas = document.getElementById('starfield');
-  if(!canvas) return;
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let stars = [];
-  function resize(){
+  function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const count = Math.floor((canvas.width * canvas.height) / 9000);
-    stars = Array.from({length: count}, () => ({
-      x: Math.random()*canvas.width,
-      y: Math.random()*canvas.height,
-      r: Math.random()*1.3 + 0.2,
-      baseAlpha: Math.random()*0.5 + 0.15,
-      twinkleSpeed: Math.random()*0.02 + 0.005,
-      phase: Math.random()*Math.PI*2
+    stars = Array.from({ length: count }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.3 + 0.2,
+      baseAlpha: Math.random() * 0.5 + 0.15,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      phase: Math.random() * Math.PI * 2
     }));
   }
   resize();
   window.addEventListener('resize', resize);
   let t = 0;
-  function draw(){
+  function draw() {
     t += 1;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     stars.forEach(s => {
-      const alpha = s.baseAlpha + Math.sin(t*s.twinkleSpeed + s.phase) * 0.2;
+      const alpha = s.baseAlpha + Math.sin(t * s.twinkleSpeed + s.phase) * 0.2;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(200,235,255,${Math.max(0,alpha)})`;
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,235,255,${Math.max(0, alpha)})`;
       ctx.fill();
     });
     requestAnimationFrame(draw);
@@ -1566,41 +1757,44 @@ core.addEventListener('click', (e)=>{
   draw();
 })();
 
-window.addEventListener('load', ()=>{
+window.addEventListener('load', () => {
   initBatteryUI();
-  setTimeout(()=>{ 
-    initAudio(); 
-    chime(); 
-    speak('Здравствуйте. Все системы онлайн.'); 
+  setTimeout(() => {
+    initAudio();
+    chime();
+    speak('Здравствуйте. Все системы онлайн.');
   }, 700);
 });
 
 // ---- Wake word toggle ----
 const wakeBtn = document.getElementById('wakeBtn');
-if(wakeBtn){
-  wakeBtn.addEventListener('click', async ()=>{
-    if(!recognition){ speak('Голосовой ввод не поддерживается этим браузером.'); return; }
+if (wakeBtn) {
+  wakeBtn.addEventListener('click', async () => {
+    if (!recognition) { speak('Голосовой ввод не поддерживается этим браузером.'); return; }
     wakeMode = !wakeMode;
-    wakeBtn.textContent = 'Wake word: ' + (wakeMode ? 'вкл' : 'выкл');
+    wakeBtn.textContent = 'Wake: ' + (wakeMode ? 'вкл' : 'выкл');
     wakeBtn.classList.toggle('active', wakeMode);
     core.classList.toggle('wake', wakeMode);
+    const wakeWordInput = document.getElementById('wakeWordInput');
+    const wakeWord = wakeWordInput.value.trim() || 'Джарвис';
     const hint = document.getElementById('micHint');
-    if(hint) hint.textContent = wakeMode ? 'скажи «Джарвис» и свой вопрос' : 'нажми на ядро и говори';
-    if(wakeMode){
+    if (hint) hint.textContent = wakeMode ? `скажи «${wakeWord}» и свой вопрос` : 'нажми на ядро и говори';
+    if (wakeMode) {
       initAudio();
       recognition.continuous = true;
       enableDeviceTilt();
-      try{ recognition.start(); }catch(e){}
+      try { recognition.start(); } catch (e) {}
       showStatus('Wake word активен');
       hideStatusSoon();
     } else {
       recognition.continuous = false;
-      try{ recognition.stop(); }catch(e){}
+      try { recognition.stop(); } catch (e) {}
       stopListening();
     }
   });
 }
-</script>
 
+console.log('J.A.R.V.I.S. загружен. Gemini работает через Cloudflare Worker — ключ в безопасности.');
+</script>
 </body>
 </html>
