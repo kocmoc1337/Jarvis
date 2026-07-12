@@ -58,14 +58,6 @@
 
 ---
 
-## 📸 Скриншоты
-
-<div align="center">
-    <img src="https://i.imgur.com/8FvlN1T.png" width="600" alt="J.A.R.V.I.S. Интерфейс">
-</div>
-
----
-
 ## 🚀 Запуск
 
 Это статичная HTML-страница, бэкенд не нужен.
