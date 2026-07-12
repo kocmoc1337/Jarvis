@@ -5,7 +5,7 @@
 <title>J.A.R.V.I.S. — Ton 618</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; background: radial-gradient(circle at 50% 50%, #1a0a2e 0%, #0d0518 45%, #05020a 70%); font-family: 'Segoe UI', sans-serif; color: #d8f6ff; }
+  html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #d8f6ff; }
 
   /* TON 618 ФОН (всегда включён) */
   #ton618Bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 50% 50%, #1a0a2e 0%, #0d0518 45%, #05020a 70%); }
@@ -28,6 +28,10 @@
     animation: shadowPulse 6s ease-in-out infinite;
   }
   @keyframes shadowPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.02); opacity: 0.9; } }
+
+  /* ---- КОНТЕЙНЕР ДЛЯ ТЕМЫ TON 618 (скрыт по умолчанию) ---- */
+  #ton618Container { display: none; }
+  #ton618Container.active { display: block; }
 
   .grid-bg, .scanline, .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
   .grid-bg { background-image: linear-gradient(rgba(122,92,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(122,92,255,0.04) 1px, transparent 1px); background-size: 50px 50px; -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%); mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%); }
@@ -125,7 +129,6 @@
   .theme-menu button:hover { background: rgba(122,92,255,0.1); border-color: rgba(122,92,255,0.4); }
   .theme-menu button.active-theme { border-color: #7a5cff; background: rgba(122,92,255,0.15); }
 
-  /* адаптация для телефона */
   @media (max-width: 480px) {
     .hud-panel { padding: 4px 8px; font-size: 9px; }
     .hud-panel .value { font-size: 11px; }
@@ -141,11 +144,19 @@
 </head>
 <body>
 
-<!-- ====== TON 618 ФОН ====== -->
+<!-- ====== TON 618 ФОН (всегда включён) ====== -->
 <div id="ton618Bg"></div>
 <div id="accretionDisk"></div>
 <div id="accretionRing"></div>
 <div id="blackHoleShadow"></div>
+
+<!-- ====== КОНТЕЙНЕР ДЛЯ ТЕМЫ TON 618 ====== -->
+<div id="ton618Container">
+  <div id="ton618Bg"></div>
+  <div id="accretionDisk"></div>
+  <div id="accretionRing"></div>
+  <div id="blackHoleShadow"></div>
+</div>
 
 <canvas id="starfield" style="position:fixed;inset:0;z-index:-1;pointer-events:none;"></canvas>
 <div class="grid-bg"></div>
@@ -258,7 +269,7 @@
 const GEMINI_WORKER_URL = 'https://jarvis-proxy.egar3864.workers.dev';
 
 // ============================================================
-// 🎨 СИСТЕМА ТЕМ
+// 🎨 СИСТЕМА ТЕМ (сокращённая)
 // ============================================================
 const themes = {
   classic: {
@@ -552,10 +563,11 @@ function applyTheme(name) {
   style.textContent = t.css;
   document.head.appendChild(style);
   document.getElementById('titleSub').textContent = t.sub;
-  document.getElementById('ton618Container').classList.toggle('active', t.ton618);
+  const container = document.getElementById('ton618Container');
+  if (container) container.classList.toggle('active', t.ton618);
   const ind = document.getElementById('themeIndicator');
   const colors = { classic: '#4fd8ff', ton618: '#7a5cff', dark: '#00ff88', light: '#0066cc' };
-  ind.style.background = colors[name] || '#4fd8ff';
+  if (ind) ind.style.background = colors[name] || '#4fd8ff';
   document.querySelectorAll('.theme-menu button').forEach(b => b.classList.toggle('active-theme', b.dataset.theme === name));
   try { localStorage.setItem('jarvis-theme', name); } catch(e) {}
 }
@@ -564,12 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('jarvis-theme');
   if (saved && themes[saved]) applyTheme(saved);
   else applyTheme('classic');
-  
   const btn = document.getElementById('themeBtn');
   const menu = document.getElementById('themeMenu');
-  btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
-  document.addEventListener('click', () => menu.classList.remove('open'));
-  menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { applyTheme(b.dataset.theme); menu.classList.remove('open'); }));
+  if (btn && menu) {
+    btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
+    document.addEventListener('click', () => menu.classList.remove('open'));
+    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { applyTheme(b.dataset.theme); menu.classList.remove('open'); }));
+  }
 });
 
 // ============================================================
