@@ -76,6 +76,93 @@
       rgba(122, 92, 255, 0.03) 3px, rgba(122, 92, 255, 0.03) 4px);
   }
 
+  /* ---- Ton 618 фон (чёрная дыра) ---- */
+  .ton-618-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -0.5;
+    background: radial-gradient(circle at 50% 50%, #1a0a2e 0%, #0d0518 45%, #05020a 70%);
+    pointer-events: none;
+  }
+
+  .accretion-disk {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 80vmin;
+    height: 80vmin;
+    transform: translate(-50%, -50%);
+    z-index: -0.4;
+    border-radius: 50%;
+    background: 
+      radial-gradient(ellipse at 30% 40%, rgba(122, 92, 255, 0.25), transparent 70%),
+      radial-gradient(ellipse at 70% 60%, rgba(181, 155, 255, 0.15), transparent 60%),
+      radial-gradient(ellipse at 40% 30%, rgba(255, 178, 56, 0.08), transparent 50%),
+      radial-gradient(ellipse at center, rgba(255, 77, 94, 0.05), transparent 80%);
+    animation: diskPulse 8s ease-in-out infinite;
+    filter: blur(2px);
+  }
+
+  @keyframes diskPulse {
+    0% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0.7; }
+    50% { transform: translate(-50%, -50%) scale(1.05) rotate(5deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0.7; }
+  }
+
+  .accretion-ring {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -0.3;
+    border-radius: 50%;
+    border: 2px solid rgba(122, 92, 255, 0.15);
+    width: 90vmin;
+    height: 90vmin;
+    animation: ringRotate 25s linear infinite;
+    box-shadow: 
+      0 0 40px rgba(122, 92, 255, 0.05),
+      inset 0 0 40px rgba(122, 92, 255, 0.03);
+  }
+
+  .accretion-ring::before {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    border-radius: 50%;
+    border: 1px solid rgba(181, 155, 255, 0.08);
+    animation: ringRotate 15s linear infinite reverse;
+    box-shadow: 0 0 30px rgba(181, 155, 255, 0.03);
+  }
+
+  @keyframes ringRotate {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  .black-hole-shadow {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -0.2;
+    border-radius: 50%;
+    width: 30vmin;
+    height: 30vmin;
+    background: radial-gradient(circle at 40% 40%, rgba(5, 2, 10, 0.9), #05020a);
+    box-shadow: 
+      0 0 60px rgba(5, 2, 10, 0.9),
+      0 0 120px rgba(5, 2, 10, 0.7),
+      0 0 200px rgba(5, 2, 10, 0.5);
+    filter: blur(4px);
+    animation: shadowPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes shadowPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.02); opacity: 0.9; }
+  }
+
   main {
     position: relative;
     z-index: 10;
@@ -575,7 +662,13 @@
 </head>
 <body>
 
-<canvas id="starfield" style="position:fixed;inset:0;z-index:-1;"></canvas>
+<!-- ====== TON 618 ФОН ====== -->
+<div class="ton-618-bg"></div>
+<div class="accretion-disk"></div>
+<div class="accretion-ring"></div>
+<div class="black-hole-shadow"></div>
+
+<canvas id="starfield" style="position:fixed;inset:0;z-index:-0.6;pointer-events:none;"></canvas>
 <div class="nebula"></div>
 <div class="grid-bg"></div>
 <div class="scanline"></div>
